@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # agriproduce
 
 A new Flutter project.
@@ -14,3 +15,6 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+=======
+# AgriproducePay
+>>>>>>> 04d1b9e2cbbe1e17737b25e35d3c162040024ac8
