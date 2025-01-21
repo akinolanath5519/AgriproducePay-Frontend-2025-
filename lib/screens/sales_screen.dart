@@ -96,73 +96,87 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   final lastEntry = transactionWeights.last;
 
                   // Format the date and time
-                  final formattedDate = DateFormat('yyyy-MM-dd – kk:mm')
+                  final formattedDate = DateFormat('yyyy-MM-dd – hh:mm a')
                       .format(lastEntry.createdAt);
 
                   return GestureDetector(
-                    onLongPress: () {
-                      _showOptionsDialog(
-                          context, transactionId, transactionWeights);
-                    },
-                    onDoubleTap: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) => SalesDetailsScreen(
-                            transactionId: transactionId,
+                      onLongPress: () {
+                        _showOptionsDialog(
+                            context, transactionId, transactionWeights);
+                      },
+                      onDoubleTap: () {
+                        Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => SalesDetailsScreen(
+                              transactionId: transactionId,
+                            ),
                           ),
-                        ),
-                      ).then((_) {
-                        // Refresh the data after returning from the SalesDetailsScreen
-                        ref
-                            .read(bulkWeightNotifierProvider.notifier)
-                            .fetchBulkWeights(ref);
-                      });
-                    },
-                    child: Card(
+                        ).then((_) {
+                          // Refresh the data after returning from the SalesDetailsScreen
+                          ref
+                              .read(bulkWeightNotifierProvider.notifier)
+                              .fetchBulkWeights(ref);
+                        });
+                      },
+                      child: Card(
                         margin:
                             EdgeInsets.symmetric(vertical: 8, horizontal: 16),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(
+                              12), // Slightly more rounded corners
                         ),
-                        elevation: 2,
-                        child: ListTile(
-                          title: Text(
-                            '${index + 1}: Date: $formattedDate',
-                            style: TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16, // Larger font for better visibility
+                        elevation:
+                            4, // Increased elevation for better shadow effect
+                        shadowColor: Colors.black
+                            .withOpacity(0.2), // Softer shadow color
+                        child: Padding(
+                          padding: const EdgeInsets.all(
+                              16), // Added padding inside the card
+                          child: ListTile(
+                            contentPadding: EdgeInsets
+                                .zero, // Removes the default padding from ListTile
+                            title: Text(
+                              '${index + 1}: Date: $formattedDate',
+                              style: TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                                color: Colors
+                                    .deepPurple, // Highlight the title in a distinct color
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                SizedBox(
+                                    height:
+                                        8), // Increased spacing for better readability
+                                Text(
+                                  'Cumulative Bags: ${NumberFormat('#,##0').format(lastEntry.cumulativeBags)}',
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight
+                                        .w600, // Slightly bolder for emphasis
+                                    fontSize:
+                                        15, // Increased font size for better readability
+                                  ),
+                                ),
+                                SizedBox(
+                                    height:
+                                        4), // Increased spacing between the two values
+                                Text(
+                                  'Cumulative Weight: ${NumberFormat('#,##0.00').format(lastEntry.cumulativeWeight)} kg',
+                                  style: TextStyle(
+                                    color: Colors.black87,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 15,
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
-                          subtitle: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              SizedBox(height: 4), // Add spacing
-                              Text(
-                                'Cumulative Bags: ${lastEntry.cumulativeBags}',
-                                style: TextStyle(
-                                  color: Colors
-                                      .black87, // Darker color for emphasis
-                                  fontWeight:
-                                      FontWeight.w500, // Slightly bolder
-                                  fontSize: 14,
-                                ),
-                              ),
-                              SizedBox(
-                                  height:
-                                      2), // Spacing between cumulative values
-                              Text(
-                                'Cumulative Weight: ${lastEntry.cumulativeWeight.toStringAsFixed(2)} kg',
-                                style: TextStyle(
-                                  color: Colors.black87, // Match bags styling
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 14,
-                                ),
-                              ),
-                            ],
-                          ),
-                        )),
-                  );
+                        ),
+                      ));
                 },
               ),
       ),

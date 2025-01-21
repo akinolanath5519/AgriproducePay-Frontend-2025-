@@ -70,7 +70,8 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
       final commodities = ref.read(commodityNotifierProvider);
       final selectedCommodity = commodities.firstWhere(
         (commodity) => commodity.name == commodityName,
-        orElse: () => Commodity(id: '', name: '', rate: 0.0), // Return a default Commodity object
+        orElse: () => Commodity(
+            id: '', name: '', rate: 0.0), // Return a default Commodity object
       );
       if (selectedCommodity.name.isNotEmpty) {
         setState(() {
@@ -92,7 +93,8 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
     if (_weightController.text.isNotEmpty) {
       double weight = double.tryParse(_weightController.text) ?? 0;
       double unitWeight = _unitWeights[_selectedUnit] ?? 1000.0;
-      double rate = double.tryParse(_rateController.text.replaceAll(',', '')) ?? 0;
+      double rate =
+          double.tryParse(_rateController.text.replaceAll(',', '')) ?? 0;
       _totalPrice = (weight / unitWeight) * rate;
       _priceInWords = convertNumberToWords(_totalPrice);
       setState(() {});
@@ -115,20 +117,26 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
             TextButton(
               onPressed: () {
                 if (_formKey.currentState?.validate() == true) {
-                  final double enteredRate = double.tryParse(_rateController.text.replaceAll(',', '')) ?? 0.0;
-                  final double rateToSave = enteredRate > 0 ? enteredRate : (_selectedCommodity?.rate ?? 0.0);
+                  final double enteredRate = double.tryParse(
+                          _rateController.text.replaceAll(',', '')) ??
+                      0.0;
+                  final double rateToSave = enteredRate > 0
+                      ? enteredRate
+                      : (_selectedCommodity?.rate ?? 0.0);
 
                   final transaction = Transaction(
                     weight: double.tryParse(_weightController.text) ?? 0,
                     unit: _selectedUnit,
                     price: _totalPrice,
-                    commodityName: _selectedCommodity?.name ?? '',
+                    commodityName: _commodityController.text,
                     supplierName: _selectedSupplier?.name ?? '',
                     rate: rateToSave,
                     transactionDate: _transactionDate,
                   );
 
-                  ref.read(transactionProvider.notifier).addTransaction(ref, transaction);
+                  ref
+                      .read(transactionProvider.notifier)
+                      .addTransaction(ref, transaction);
 
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
@@ -136,7 +144,9 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                         'Transaction saved successfully!',
                         style: TextStyle(color: Colors.white),
                       ),
-                      duration: const Duration(seconds: 2),
+                      backgroundColor:
+                          Colors.green, // Set the background color to green
+                      duration: const Duration(seconds: 1),
                     ),
                   );
 
@@ -203,7 +213,8 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                             decoration: InputDecoration(
                               labelText: 'Weight',
                               border: OutlineInputBorder(
-                                borderSide: BorderSide(color: Colors.grey[300]!),
+                                borderSide:
+                                    BorderSide(color: Colors.grey[300]!),
                               ),
                             ),
                             keyboardType: TextInputType.number,
@@ -230,7 +241,8 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                             ),
                           ),
                           items: _units.map((String unit) {
-                            return DropdownMenuItem<String>(value: unit, child: Text(unit));
+                            return DropdownMenuItem<String>(
+                                value: unit, child: Text(unit));
                           }).toList(),
                           onChanged: (String? newValue) {
                             setState(() {
@@ -263,12 +275,14 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                       if (widget.isAdmin) {
                         String formattedValue = value.replaceAll(',', '');
                         if (formattedValue.isNotEmpty) {
-                          formattedValue = NumberFormat('#,##0').format(int.tryParse(formattedValue) ?? 0);
+                          formattedValue = NumberFormat('#,##0')
+                              .format(int.tryParse(formattedValue) ?? 0);
                         }
 
                         _rateController.value = _rateController.value.copyWith(
                           text: formattedValue,
-                          selection: TextSelection.collapsed(offset: formattedValue.length),
+                          selection: TextSelection.collapsed(
+                              offset: formattedValue.length),
                         );
 
                         _calculateTotalPrice();
@@ -292,21 +306,36 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                           SearchField<Commodity>(
                             controller: _commodityController,
                             suggestions: commodities
-                                .map((Commodity commodity) => SearchFieldListItem<Commodity>(commodity.name, item: commodity))
+                                .map((Commodity commodity) =>
+                                    SearchFieldListItem<Commodity>(
+                                        commodity.name,
+                                        item: commodity))
                                 .toList(),
                             onSuggestionTap: (suggestion) {
                               setState(() {
                                 _selectedCommodity = suggestion.item;
-                                _commodityController.text = _selectedCommodity?.name ?? '';
-                                _rateController.text = _selectedCommodity?.rate.toString() ?? '';
+                                _commodityController.text =
+                                    _selectedCommodity?.name ?? '';
+                                _rateController.text =
+                                    _selectedCommodity?.rate.toString() ?? '';
                                 _calculateTotalPrice();
-                                _saveSelectedCommodity(_selectedCommodity!.name);
+                                _saveSelectedCommodity(
+                                    _selectedCommodity!.name);
                               });
                               FocusScope.of(context).unfocus();
                             },
                             hint: 'Select Commodity or type..',
                             validator: (value) {
-                              // Allow the form to be valid even if no commodity is selected
+                              if (widget.isAdmin &&
+                                  value != null &&
+                                  value.isNotEmpty) {
+                                _selectedCommodity = Commodity(
+                                  id: '', // Null for id
+                                  name: value,
+                                  rate: double.tryParse(_rateController.text) ??
+                                      0.0,
+                                );
+                              }
                               return null;
                             },
                           ),
@@ -321,7 +350,8 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                           ),
                           // Positioned down arrow icon
                           Positioned(
-                            right: 10, // Position it near the right edge to avoid overlap
+                            right:
+                                10, // Position it near the right edge to avoid overlap
                             top: 12, // Align vertically with the search icon
                             child: Icon(
                               Icons.arrow_drop_down, // Down arrow icon
@@ -349,18 +379,22 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                           SearchField<Supplier>(
                             controller: _supplierController,
                             suggestions: suppliers
-                                .map((Supplier supplier) => SearchFieldListItem<Supplier>(supplier.name, item: supplier))
+                                .map((Supplier supplier) =>
+                                    SearchFieldListItem<Supplier>(supplier.name,
+                                        item: supplier))
                                 .toList(),
                             onSuggestionTap: (suggestion) {
                               setState(() {
                                 _selectedSupplier = suggestion.item;
-                                _supplierController.text = _selectedSupplier?.name ?? '';
+                                _supplierController.text =
+                                    _selectedSupplier?.name ?? '';
                               });
                               FocusScope.of(context).unfocus();
                             },
                             hint: 'Select Supplier or type..',
                             validator: (value) {
-                              if (_selectedSupplier == null || _selectedSupplier!.name.isEmpty) {
+                              if (_selectedSupplier == null ||
+                                  _selectedSupplier!.name.isEmpty) {
                                 _selectedSupplier = Supplier(
                                   id: '', // Null for id
                                   name: "General Supplier",
@@ -382,7 +416,8 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                           ),
                           // Positioned down arrow icon
                           Positioned(
-                            right: 10, // Position it near the right edge to avoid overlap
+                            right:
+                                10, // Position it near the right edge to avoid overlap
                             top: 12, // Align vertically with the search icon
                             child: Icon(
                               Icons.arrow_drop_down, // Down arrow icon

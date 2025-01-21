@@ -34,6 +34,34 @@ class SalesDetailsScreen extends ConsumerWidget {
       }
     }
 
+    Future<void> _showDeleteDialog(
+        BuildContext context, BulkWeight bulkWeight) async {
+      showDialog(
+        context: context,
+        builder: (BuildContext context) {
+          return AlertDialog(
+            title: Text('Confirm Deletion'),
+            content: Text('Are you sure you want to delete this entry?'),
+            actions: <Widget>[
+              TextButton(
+                child: Text('Cancel'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                },
+              ),
+              TextButton(
+                child: Text('Delete'),
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _deleteEntry(context, bulkWeight);
+                },
+              ),
+            ],
+          );
+        },
+      );
+    }
+
     void _editEntry(BuildContext context, BulkWeight bulkWeight) {
       final bagsController =
           TextEditingController(text: bulkWeight.bags.toString());
@@ -53,9 +81,7 @@ class SalesDetailsScreen extends ConsumerWidget {
                   keyboardType: TextInputType.number,
                   decoration: InputDecoration(labelText: 'Number of Bags'),
                 ),
-                SizedBox(
-                  height: 8,
-                ),
+                SizedBox(height: 8),
                 TextField(
                   controller: weightController,
                   keyboardType: TextInputType.number,
@@ -126,67 +152,89 @@ class SalesDetailsScreen extends ConsumerWidget {
               itemBuilder: (context, index) {
                 final bulkWeight = transactionWeights[index];
 
-                // Format the date and time
-                final formattedDate = DateFormat('yyyy-MM-dd – kk:mm')
-                    .format(bulkWeight.createdAt);
+               
 
-                return Container(
-                  margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                  padding: EdgeInsets.all(16),
-                  decoration: BoxDecoration(
-                    color: Colors.white,
-                    borderRadius: BorderRadius.circular(10),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.grey.withOpacity(0.1),
-                        spreadRadius: 2,
-                        blurRadius: 5,
-                        offset: Offset(0, 3),
-                      ),
-                    ],
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Weight #${index + 1}: ${bulkWeight.bags} bags',
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 18,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Text(
-                        'Date: $formattedDate',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.black54,
-                        ),
-                      ),
-                      SizedBox(height: 4),
-                      Text(
-                        'Weight: ${NumberFormat('#,##0.00').format(bulkWeight.weight)} kg',
-                        style: TextStyle(
-                          fontSize: 16,
-                          color: Colors.black87,
-                        ),
-                      ),
-                      SizedBox(height: 8),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.end,
-                        children: [
-                          IconButton(
-                            icon: Icon(Icons.edit, color: Colors.deepPurple),
-                            onPressed: () => _editEntry(context, bulkWeight),
+                return GestureDetector(
+                  onLongPress: () {
+                    // Show the edit and delete buttons on long press
+                    showDialog(
+                      context: context,
+                      builder: (context) {
+                        return AlertDialog(
+                          title: Text('Options'),
+                          content: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              ListTile(
+                                leading: Icon(
+                                  Icons.edit,
+                                  color: Colors.deepPurple,
+                                ),
+                                title: Text('Edit Entry'),
+                                onTap: () {
+                                  Navigator.of(context).pop();
+                                  _editEntry(context, bulkWeight);
+                                },
+                              ),
+                              ListTile(
+                                leading: Icon(Icons.delete, color: Colors.red),
+                                title: Text('Delete Entry'),
+                                onTap: () {
+                                  Navigator.of(context).pop();
+                                  _showDeleteDialog(context, bulkWeight);
+                                },
+                              ),
+                            ],
                           ),
-                          IconButton(
-                            icon: Icon(Icons.delete, color: Colors.red),
-                            onPressed: () => _deleteEntry(context, bulkWeight),
+                        );
+                      },
+                    );
+                  },
+                  child: Container(
+                    margin: EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+                    padding: EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.withOpacity(0.2),
+                          spreadRadius: 2,
+                          blurRadius: 8,
+                          offset: Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        SizedBox(height: 4),
+                        Text(
+                          'Weight #${index + 1}: ${bulkWeight.bags} bags',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 18,
+                            color: Colors.black87,
                           ),
-                        ],
-                      ),
-                    ],
+                        ),
+                        SizedBox(height: 8),
+                        Text(
+                          'Weight: ${NumberFormat('#,##0.00').format(bulkWeight.weight)} kg',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black87,
+                          ),
+                        ),
+                        SizedBox(height: 12),
+                        Text(
+                          'Date: ${DateFormat('yyyy-MM-dd – HH:mm').format(bulkWeight.createdAt)}',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.black54,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 );
               },

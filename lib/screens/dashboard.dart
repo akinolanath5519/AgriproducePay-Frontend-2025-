@@ -4,6 +4,7 @@ import 'package:agriproduce/screens/purchases_screen.dart';
 import 'package:agriproduce/screens/profile_screen.dart';
 import 'package:agriproduce/subscription/sub_manage.dart';
 import 'package:agriproduce/state_management/subscription_provider.dart';
+import 'package:agriproduce/subscription/user_sub_renewal.dart';
 import 'package:agriproduce/widgets/custom_bottom_navigation_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -30,13 +31,13 @@ class DashboardState extends ConsumerState<Dashboard> {
         ? [
             HomeScreen(isAdmin: true),
             CalculatorScreen(isAdmin: true),
-            PurchasesScreen(),
+            PurchasesScreen(isAdmin: widget.isAdmin),
             ProfileScreen(),
           ]
         : [
             HomeScreen(isAdmin: false),
             CalculatorScreen(isAdmin: false),
-            PurchasesScreen(),
+            PurchasesScreen(isAdmin: widget.isAdmin),
             ProfileScreen(),
             SubscriptionManagement(),
           ];
@@ -99,7 +100,8 @@ class DashboardState extends ConsumerState<Dashboard> {
           }
         },
         loading: () => Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(child: Text("Error loading subscription status")),
+        error: (error, stackTrace) =>
+            Center(child: Text("Error loading subscription status")),
       ),
       bottomNavigationBar: CustomBottomNavigationBar(
         selectedIndex: _selectedIndex,
@@ -134,7 +136,8 @@ class DashboardState extends ConsumerState<Dashboard> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: Text("Subscription Expired"),
-          content: Text("Your subscription has expired. Would you like to renew it?"),
+          content: Text(
+              "Your subscription has expired. Would you like to renew it?"),
           actions: <Widget>[
             TextButton(
               onPressed: () {
@@ -142,7 +145,7 @@ class DashboardState extends ConsumerState<Dashboard> {
                 Navigator.push(
                   context,
                   MaterialPageRoute(
-                    builder: (context) => SubscriptionManagement(),
+                    builder: (context) => SubscriptionRenewalScreen(),
                   ),
                 );
               },

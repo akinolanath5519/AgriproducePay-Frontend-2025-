@@ -155,7 +155,8 @@ class _SupplierScreenState extends ConsumerState<SupplierScreen> {
               child: Text('Cancel'),
             ),
             ElevatedButton(
-              style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+              style:
+                  ElevatedButton.styleFrom(backgroundColor: Colors.deepPurple),
               onPressed: () async {
                 try {
                   await ref

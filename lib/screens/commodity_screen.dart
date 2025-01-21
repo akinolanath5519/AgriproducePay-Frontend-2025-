@@ -161,6 +161,44 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
     );
   }
 
+  // Confirm Delete dialog
+  void _showDeleteConfirmDialog(BuildContext context, String commodityId) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text('Delete Commodity'),
+          content:
+              Text('Are you sure you want to delete this commodity\'s rate?'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text('Cancel'),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                try {
+                  await ref
+                      .read(commodityNotifierProvider.notifier)
+                      .deleteCommodity(ref, commodityId);
+                  _fetchCommodities();
+                  Navigator.of(context).pop();
+                } catch (error) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error deleting commodity.')),
+                  );
+                }
+              },
+              child: Text('Delete'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   List<Commodity> _filterCommodities(List<Commodity> commodities) {
     final query = searchController.text.toLowerCase();
     return commodities.where((commodity) {
@@ -212,9 +250,7 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
                           onEdit: () => _showCommodityDialog(context,
                               commodity: commodity),
                           onDelete: () {
-                            ref
-                                .read(commodityNotifierProvider.notifier)
-                                .deleteCommodity(ref, commodity.id);
+                            _showDeleteConfirmDialog(context, commodity.id);
                           },
                         );
                       },

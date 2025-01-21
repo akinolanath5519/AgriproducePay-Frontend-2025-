@@ -1,4 +1,3 @@
-import 'package:agriproduce/data_models/bulkweight_model.dart';
 import 'package:agriproduce/screens/bulkweight_screen.dart';
 import 'package:agriproduce/screens/commodity_screen.dart';
 import 'package:agriproduce/screens/sales_screen.dart';
@@ -9,7 +8,6 @@ import 'package:agriproduce/widgets/analytics_card.dart';
 import 'package:agriproduce/widgets/management_options.dart';
 import 'package:agriproduce/state_management/supplier_provider.dart';
 import 'package:agriproduce/state_management/transaction_provider.dart';
-import 'package:agriproduce/state_management/bulkweight_provider.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   final bool isAdmin;
@@ -56,111 +54,104 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     // Fetch data from providers
     final suppliers = ref.watch(supplierNotifierProvider);
     final transactions = ref.watch(transactionProvider);
-    final bulkWeights = ref.watch(bulkWeightNotifierProvider);
-
-    // Group bulk weights by transaction ID
-    final Map<String, List<BulkWeight>> groupedBulkWeights = {};
-    for (var bulkWeight in bulkWeights) {
-      if (!groupedBulkWeights.containsKey(bulkWeight.transactionId)) {
-        groupedBulkWeights[bulkWeight.transactionId] = [];
-      }
-      groupedBulkWeights[bulkWeight.transactionId]!.add(bulkWeight);
-    }
 
     return Scaffold(
-      body: ListView(
-        padding: const EdgeInsets.all(16.0),
-        children: [
-          const SizedBox(height: 20),
-          Text(
-            'Welcome back! 👋',
-            style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: Colors.purple,
-                ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 10),
-          Text(
-            'Welcome to your agriproduce hub! Let’s cultivate progress together.',
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  color: Colors.grey[700],
-                ),
-            textAlign: TextAlign.center,
-          ),
-          const SizedBox(height: 20),
-          // Analytics Section
-          isAnalyticsLoading
-              ? const Center(
-                  child: CircularProgressIndicator(
-                  color: Colors.deepPurple,
-                ))
-              : AnalyticsCard(
-                  title: 'Analytics Overview',
-                  data: [
-                    {
-                      'title': 'Total Suppliers',
-                      'value': suppliers.length.toString()
-                    },
-                    {
-                      'title': 'Total Purchases',
-                      'value': transactions.length.toString()
-                    },
-                  ],
-                ),
-          const SizedBox(height: 20),
-          // Management Options
-          ManagementOptions(
-            options: [
-              {
-                'title': 'Add Supplier',
-                'icon': Icons.person_add,
-                'onTap': () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const SupplierScreen()),
-                  );
-                },
-              },
-              if (widget.isAdmin)
+      body: RefreshIndicator(
+        onRefresh: _fetchAnalyticsData, // Trigger refresh
+        child: ListView(
+          padding: const EdgeInsets.all(16.0),
+          children: [
+            const SizedBox(height: 20),
+            Text(
+              'Welcome back! 👋',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: Colors.purple,
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 10),
+            Text(
+              'Welcome to your agriproduce hub! Let’s cultivate progress together.',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.grey[700],
+                  ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 20),
+            // Analytics Section
+            isAnalyticsLoading
+                ? const Center(
+                    child: CircularProgressIndicator(
+                    color: Colors.deepPurple,
+                  ))
+                : AnalyticsCard(
+                    title: 'Analytics Overview',
+                    data: [
+                      {
+                        'title': 'Total Suppliers',
+                        'value': suppliers.length.toString()
+                      },
+                      {
+                        'title': 'Total Purchases',
+                        'value': transactions.length.toString()
+                      },
+                    ],
+                  ),
+            const SizedBox(height: 20),
+            // Management Options
+            ManagementOptions(
+              options: [
                 {
-                  'title': 'Add Commodity\'s Rate',
-                  'icon': Icons.inventory,
+                  'title': 'Add Supplier',
+                  'icon': Icons.person_add,
                   'onTap': () {
                     Navigator.push(
                       context,
                       MaterialPageRoute(
-                          builder: (context) => const CommodityScreen()),
+                          builder: (context) => const SupplierScreen()),
                     );
                   },
                 },
-              {
-                'title': 'Bulk Weight',
-                'icon': Icons.scale,
-                'onTap': () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => const BulkWeightScreen(),
-                    ),
-                  );
+                if (widget.isAdmin)
+                  {
+                    'title': 'Add Commodity\'s Rate',
+                    'icon': Icons.inventory,
+                    'onTap': () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => const CommodityScreen()),
+                      );
+                    },
+                  },
+                {
+                  'title': 'Add Bulk Weight',
+                  'icon': Icons.scale,
+                  'onTap': () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const BulkWeightScreen(),
+                      ),
+                    );
+                  },
                 },
-              },
-              {
-                'title': 'Sales',
-                'icon': Icons.shopping_cart,
-                'onTap': () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                        builder: (context) => const SalesScreen()),
-                  );
+                {
+                  'title': 'Sales',
+                  'icon': Icons.shopping_cart,
+                  'onTap': () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const SalesScreen()),
+                    );
+                  },
                 },
-              },
-            ],
-          ),
-        ],
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }

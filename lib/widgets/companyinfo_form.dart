@@ -54,7 +54,7 @@ class _CompanyInfoFormState extends ConsumerState<CompanyInfoForm> {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Company information saved successfully!'),
-          backgroundColor: Colors.green,
+          backgroundColor: Colors.deepPurple,
         ),
       );
 

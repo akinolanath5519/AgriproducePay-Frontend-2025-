@@ -8,7 +8,7 @@ import 'package:agriproduce/screens/dashboard.dart';
 import 'package:agriproduce/screens/register_page.dart';
 import 'package:agriproduce/screens/forget_password.dart';
 import 'package:agriproduce/widgets/companyinfo_form.dart';
-import 'package:agriproduce/subscription/renew_sub.dart';
+import 'package:agriproduce/subscription/super_admin_renew_sub.dart';
 import 'package:agriproduce/widgets/custom_decorations.dart';
 
 class LoginPage extends ConsumerStatefulWidget {

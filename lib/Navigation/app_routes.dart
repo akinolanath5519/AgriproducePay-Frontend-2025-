@@ -26,7 +26,7 @@ class AppRoutes {
       case calculator:
         return MaterialPageRoute(builder: (_) => CalculatorScreen(isAdmin: false)); // Pass isAdmin: false for non-admin
       case purchases:
-        return MaterialPageRoute(builder: (_) => PurchasesScreen());
+        return MaterialPageRoute(builder: (_) => PurchasesScreen(isAdmin: false));
       case profile:
         return MaterialPageRoute(builder: (_) => ProfileScreen());
       default:
