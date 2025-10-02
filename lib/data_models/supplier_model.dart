@@ -1,24 +1,22 @@
-
-
 class Supplier {
   final String id;
   final String name;
-  final String contact;
-  final String address;
+  final String? contact;
+  final String? address;
 
   Supplier({
     required this.id,
     required this.name,
-    required this.contact,
-    required this.address,
+    this.contact,
+    this.address,
   });
 
   factory Supplier.fromJson(Map<String, dynamic> json) {
     return Supplier(
       id: (json['id'] ?? json['_id']).toString(), // Convert to String
       name: json['name'],
-      contact: json['contact'],
-      address: json['address'],
+      contact: json['contact'],   // could be null
+      address: json['address'],   // could be null
     );
   }
 
@@ -31,7 +29,6 @@ class Supplier {
     };
   }
 
-  // CopyWith method
   Supplier copyWith({
     String? id,
     String? name,

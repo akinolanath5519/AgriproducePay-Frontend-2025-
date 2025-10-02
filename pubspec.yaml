@@ -64,6 +64,16 @@ dependencies:
   permission_handler: ^11.3.1
   file_picker: ^8.1.7
   url_launcher: ^6.3.1
+  path_provider_android: ^2.2.15
+  excel: ^4.0.6
+  flutter_file_dialog: ^3.0.2
+  flutter_local_notifications: ^18.0.1
+  skeleton_loader: ^2.0.0+4
+  hive: ^2.2.3
+  hive_flutter: ^1.1.0
+  speech_to_text: ^7.0.0
+  iconsax: ^0.0.8
+  flutter_lints: ^5.0.0
 
 dev_dependencies:
   flutter_test:

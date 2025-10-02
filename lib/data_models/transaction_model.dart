@@ -1,31 +1,34 @@
 class Transaction {
   final String? id;
-  final String commodityName;
+  final String? commodityName;
   final double weight;
   final String unit;
-  final String supplierName;
+  final String? supplierName;
   final double price;
-  final double rate; // Added rate field
+  final double rate;
   final DateTime? transactionDate;
-  final String? userId; // userId is now a part of the transaction
-  String? userName; // userName will be fetched later
+  final String? userId;
+  String? userName;
+
+  /// New field
+  final String? commodityCondition;
 
   Transaction({
     this.id,
-    required this.commodityName,
+    this.commodityName,
     required this.weight,
     required this.unit,
-    required this.supplierName,
+    this.supplierName,
     required this.price,
-    required this.rate, // Add rate to the constructor
+    required this.rate,
     this.transactionDate,
-    this.userId, // Added userId here
-    this.userName, // Initialize userName as null
+    this.userId,
+    this.userName,
+    this.commodityCondition, // add to constructor
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
     return Transaction(
-      // Handle both 'id' and '_id' for compatibility
       id: (json['id'] ?? json['_id'])?.toString(),
       commodityName: json['commodityName'] ?? '',
       weight: (json['weight'] is int)
@@ -38,13 +41,13 @@ class Transaction {
           : json['price']?.toDouble() ?? 0.0,
       rate: (json['rate'] is int)
           ? (json['rate'] as int).toDouble()
-          : json['rate']?.toDouble() ?? 0.0, // Parse rate from the JSON
+          : json['rate']?.toDouble() ?? 0.0,
       transactionDate: json['transactionDate'] != null
           ? DateTime.parse(json['transactionDate'])
           : null,
-      // Ensure userId is converted to String, even if it's an integer
       userId: json['userId']?.toString(),
-      userName: json['userName'], // User name is included from the response
+      userName: json['userName'],
+      commodityCondition: json['commodityCondition'], // new
     );
   }
 
@@ -56,10 +59,40 @@ class Transaction {
       'unit': unit,
       'supplierName': supplierName,
       'price': price,
-      'rate': rate, // Include rate in the JSON
+      'rate': rate,
       'transactionDate': transactionDate?.toIso8601String(),
-      if (userId != null) 'userId': userId, // Include userId in the JSON
-      if (userName != null) 'userName': userName, // Include userName if available
+      if (userId != null) 'userId': userId,
+      if (userName != null) 'userName': userName,
+      if (commodityCondition != null)
+        'commodityCondition': commodityCondition, // new
     };
+  }
+
+  Transaction copyWith({
+    String? id,
+    String? commodityName,
+    double? weight,
+    String? unit,
+    String? supplierName,
+    double? price,
+    double? rate,
+    DateTime? transactionDate,
+    String? userId,
+    String? userName,
+    String? commodityCondition, // new
+  }) {
+    return Transaction(
+      id: id ?? this.id,
+      commodityName: commodityName ?? this.commodityName,
+      weight: weight ?? this.weight,
+      unit: unit ?? this.unit,
+      supplierName: supplierName ?? this.supplierName,
+      price: price ?? this.price,
+      rate: rate ?? this.rate,
+      transactionDate: transactionDate ?? this.transactionDate,
+      userId: userId ?? this.userId,
+      userName: userName ?? this.userName,
+      commodityCondition: commodityCondition ?? this.commodityCondition, // new
+    );
   }
 }

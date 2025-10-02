@@ -3,6 +3,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_storage/get_storage.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:agriproduce/theme/app_theme.dart';
+
 
 void main() async {
   // Ensure proper initialization of Flutter bindings
@@ -11,7 +13,7 @@ void main() async {
   // Initialize GetStorage
   await GetStorage.init();
 
-  runApp(ProviderScope(child: MyApp()));
+  runApp(const ProviderScope(child: MyApp()));
 }
 
 class MyApp extends StatelessWidget {
@@ -21,54 +23,131 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'AgriProduce',
-      theme: lightTheme(), // Light theme using GetWidget
-      home: SplashScreen(), // Show SplashScreen initially
+        theme: appTheme, // Light theme using GetWidget
+      home: const SplashScreen(), // Show SplashScreen initially
     );
   }
+}
+
+
+class SplashStrings {
+  static const tagline = 'Simplifying Agriculture,\nFacilitating Trade';
+  static const loadingText = 'Loading, please wait...';
+  static const logoPath = 'assets/splashscreen.png';
+}
+
+class SplashDurations {
+  static const splashDelay = Duration(seconds: 3);
+  static const logoAnimation = Duration(milliseconds: 1000);
 }
 
 class SplashScreen extends StatefulWidget {
+  const SplashScreen({super.key});
+
   @override
-  _SplashScreenState createState() => _SplashScreenState();
+  SplashScreenState createState() => SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class SplashScreenState extends State<SplashScreen> {
+  late final Future<void> _navigationFuture;
+
   @override
   void initState() {
     super.initState();
-    _navigateToLogin();
+    _navigationFuture = _navigateToLogin();
   }
 
-  _navigateToLogin() async {
-    await Future.delayed(Duration(seconds: 3), () {}); // Delay for 3 seconds
+  Future<void> _navigateToLogin() async {
+    await Future.delayed(SplashDurations.splashDelay);
+    if (!mounted) return;
+
     Navigator.pushReplacement(
       context,
-      MaterialPageRoute(builder: (context) => LoginPage()),
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => const LoginPage(),
+        transitionsBuilder: (_, animation, __, child) => FadeTransition(
+          opacity: animation,
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
     );
+  }
+
+  @override
+  void dispose() {
+    _navigationFuture.ignore();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        color: Colors.deepPurple, // Set the background color to deep purple
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              Colors.deepPurple,
+              Colors.deepPurple
+            ], // Single color gradient
+            stops: [0.0, 1.0],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Image.asset('assets/splashscreen.png'), // Display the image
-              SizedBox(height: 20),
-              Text(
-                'Simplifying Agriculture, Empowering Trade',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.white, // Set text color to white
-                  fontFamily: GoogleFonts.montserrat().fontFamily,
-                ),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 600),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 24.0),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  FadeInLogo(
+                    duration: SplashDurations.logoAnimation,
+                    child: Image.asset(
+                      SplashStrings.logoPath,
+                      width: 300, // Adjusted size
+                      height: 80, // Adjusted size
+                      fit: BoxFit.contain,
+                      errorBuilder: (_, __, ___) => Icon(
+                        Icons.business,
+                        size: 50, // Fixed size
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10), // Reduced height
+                  Semantics(
+                    header: true,
+                    child: Text(
+                      SplashStrings.tagline,
+                      textAlign: TextAlign.center,
+                      style: GoogleFonts.montserrat(
+                        fontSize: 18,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.white,
+                        letterSpacing: 0.5,
+                        height: 1.3,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 30), // Reduced height
+
+                  const SizedBox(height: 30),
+                  ExcludeSemantics(
+                    child: Text(
+                      SplashStrings.loadingText,
+                      style: GoogleFonts.montserrat(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w400,
+                        color: Colors.white.withOpacity(0.8),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
@@ -76,100 +155,67 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 }
 
-// Light theme configuration using GetWidget
-ThemeData lightTheme() {
-  return ThemeData(
-    brightness: Brightness.light,
-    primarySwatch: Colors.deepPurple, // Primary color set to deepPurple
-    primaryColor: Colors.deepPurple,
-    colorScheme: ColorScheme.fromSwatch().copyWith(
-      secondary: Colors.deepPurpleAccent, // Complementary purple accent
-    ),
-    scaffoldBackgroundColor: Colors.grey[200], // Light gray background color
-    appBarTheme: AppBarTheme(
-      color: Colors.deepPurple,
-      elevation: 0,
-      iconTheme: IconThemeData(color: Colors.white),
-      toolbarTextStyle: TextTheme(
-        titleLarge: TextStyle(
-          color: Colors.white,
-          fontSize: 20.0,
-          fontWeight: FontWeight.bold,
-          fontFamily:
-              GoogleFonts.montserrat().fontFamily, // Montserrat for titles
-        ),
-      ).bodyMedium,
-      titleTextStyle: TextTheme(
-        titleLarge: TextStyle(
-          color: Colors.white,
-          fontSize: 20.0,
-          fontWeight: FontWeight.bold,
-          fontFamily:
-              GoogleFonts.montserrat().fontFamily, // Montserrat for titles
-        ),
-      ).titleLarge,
-    ),
-    textTheme: TextTheme(
-      bodyLarge: TextStyle(
-        fontSize: 16.0,
-        color: Colors.black,
-        fontFamily: GoogleFonts.roboto().fontFamily, // Roboto for body text
-      ),
-      bodyMedium: TextStyle(
-        fontSize: 14.0,
-        color: Colors.black87,
-        fontFamily: GoogleFonts.roboto().fontFamily, // Roboto for body text
-      ),
-      labelLarge: TextStyle(
-        color: Colors.deepPurple,
-        fontFamily: GoogleFonts.lato().fontFamily, // Lato for labels
-      ),
-    ),
-    elevatedButtonTheme: ElevatedButtonThemeData(
-      style: ElevatedButton.styleFrom(
-        backgroundColor: Colors.deepPurple, // Updated button color
-        foregroundColor: Colors.white, // Updated text color
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10.0), // Increased corner radius
+class FadeInLogo extends StatelessWidget {
+  final Duration duration;
+  final Widget child;
+
+  const FadeInLogo({
+    super.key,
+    required this.child,
+    this.duration = SplashDurations.logoAnimation,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: 0.0, end: 1.0),
+      duration: duration,
+      curve: Curves.easeIn,
+      builder: (_, value, child) => Opacity(opacity: value, child: child),
+      child: child,
+    );
+  }
+}
+
+class PulseLoader extends StatefulWidget {
+  const PulseLoader({super.key});
+
+  @override
+  PulseLoaderState createState() => PulseLoaderState();
+}
+
+class PulseLoaderState extends State<PulseLoader>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1200),
+    )..repeat(reverse: true);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: Tween(begin: 0.7, end: 1.0).animate(
+        CurvedAnimation(
+          parent: _controller,
+          curve: Curves.easeInOut,
         ),
       ),
-    ),
-    textButtonTheme: TextButtonThemeData(
-      style: TextButton.styleFrom(
-        foregroundColor:
-            Colors.deepPurpleAccent, // Corrected to foregroundColor
+      child: const CircularProgressIndicator(
+        valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+        strokeWidth: 3,
       ),
-    ),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: const Color.fromARGB(
-          255, 122, 65, 221), // Floating action button color
-      foregroundColor: Colors.white, // Icon color
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      filled: true,
-      fillColor: Colors.grey[300], // Gray background for input fields
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10.0),
-        borderSide: BorderSide(
-          color: Colors.grey.withOpacity(0.3), // Very faint border
-        ),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(10.0),
-        borderSide: BorderSide(
-            color: Colors.deepPurple), // Focused border to deep purple
-      ),
-      labelStyle: TextStyle(
-        color: Colors.deepPurple,
-        fontFamily: GoogleFonts.lato().fontFamily, // Lato for labels
-      ),
-      contentPadding: EdgeInsets.symmetric(vertical: 12, horizontal: 16),
-    ),
-    pageTransitionsTheme: PageTransitionsTheme(
-      builders: {
-        TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
-        TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-      },
-    ),
-  );
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 }

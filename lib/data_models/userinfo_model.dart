@@ -4,6 +4,7 @@ class User {
   final String email;
   final String role;
   final bool isCurrentUser;
+  final bool isBlocked; // NEW FIELD
 
   User({
     required this.id,
@@ -11,6 +12,7 @@ class User {
     required this.email,
     required this.role,
     required this.isCurrentUser,
+    required this.isBlocked, // REQUIRED
   });
 
   factory User.fromJson(Map<String, dynamic> json) {
@@ -20,6 +22,7 @@ class User {
       email: json['email'],
       role: json['role'],
       isCurrentUser: json['isCurrentUser'] ?? false,
+      isBlocked: json['isBlocked'] ?? false, // DEFAULT FALSE
     );
   }
 
@@ -30,6 +33,7 @@ class User {
       'email': email,
       'role': role,
       'isCurrentUser': isCurrentUser,
+      'isBlocked': isBlocked,
     };
   }
 
@@ -40,6 +44,7 @@ class User {
     String? email,
     String? role,
     bool? isCurrentUser,
+    bool? isBlocked, // NEW
   }) {
     return User(
       id: id ?? this.id,
@@ -47,6 +52,7 @@ class User {
       email: email ?? this.email,
       role: role ?? this.role,
       isCurrentUser: isCurrentUser ?? this.isCurrentUser,
+      isBlocked: isBlocked ?? this.isBlocked,
     );
   }
 }

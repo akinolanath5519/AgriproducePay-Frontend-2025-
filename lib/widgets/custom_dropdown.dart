@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:searchfield/searchfield.dart';
 
 class CustomDropdown<T> extends StatelessWidget {
   final String label;

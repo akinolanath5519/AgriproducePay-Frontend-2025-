@@ -28,9 +28,11 @@ class SupplierNotifier extends StateNotifier<List<Supplier>> {
   }
 
   // Update an existing supplier
-  Future<void> updateSupplier(WidgetRef ref, String supplierId, Supplier supplier) async {
+  Future<void> updateSupplier(
+      WidgetRef ref, String supplierId, Supplier supplier) async {
     await _supplierService.updateSupplier(ref, supplierId, supplier);
-    updateSupplierInState(supplierId, supplier); // Update supplier in state immediately
+    updateSupplierInState(
+        supplierId, supplier); // Update supplier in state immediately
   }
 
   // Delete a supplier

@@ -1,3 +1,5 @@
+// ignore_for_file: deprecated_member_use
+
 import 'package:agriproduce/constant/number_to_words.dart';
 import 'package:agriproduce/data_models/commodity_model.dart';
 import 'package:agriproduce/data_models/supplier_model.dart';
@@ -26,7 +28,7 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
   final TextEditingController _commodityController = TextEditingController();
   final TextEditingController _supplierController = TextEditingController();
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
-  String _selectedUnit = 'Metric tonne';
+  String _selectedUnit = 'Polythene';
   Commodity? _selectedCommodity;
   Supplier? _selectedSupplier;
   double _totalPrice = 0.0;
@@ -42,6 +44,10 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
     'Jute': 1040.0,
   };
 
+  String? _selectedCondition;
+
+  final List<String> _conditions = ['Dry', 'Wet'];
+
   @override
   void initState() {
     super.initState();
@@ -52,6 +58,7 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
       _rateController.addListener(_calculateTotalPrice);
     }
     _loadSelectedCommodity();
+    _loadLastEnteredRate();
   }
 
   @override
@@ -77,11 +84,27 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
         setState(() {
           _selectedCommodity = selectedCommodity;
           _commodityController.text = selectedCommodity.name;
-          _rateController.text = selectedCommodity.rate.toString();
+          _rateController.text =
+              NumberFormat('#,##0').format(selectedCommodity.rate);
           _calculateTotalPrice();
         });
       }
     }
+  }
+
+  Future<void> _loadLastEnteredRate() async {
+    final prefs = await SharedPreferences.getInstance();
+    final lastRate = prefs.getDouble('lastEnteredRate') ?? 0.0;
+    if (lastRate > 0) {
+      setState(() {
+        _rateController.text = NumberFormat('#,##0').format(lastRate);
+      });
+    }
+  }
+
+  Future<void> _saveLastEnteredRate(double rate) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setDouble('lastEnteredRate', rate);
   }
 
   Future<void> _saveSelectedCommodity(String commodityName) async {
@@ -132,6 +155,7 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                     supplierName: _selectedSupplier?.name ?? '',
                     rate: rateToSave,
                     transactionDate: _transactionDate,
+                    commodityCondition: _selectedCondition
                   );
 
                   ref
@@ -150,9 +174,13 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                     ),
                   );
 
+                  _saveLastEnteredRate(rateToSave);
+                  setState(() {
+                    _rateController.text =
+                        NumberFormat('#,##0').format(rateToSave);
+                  });
                   Navigator.of(context).pop();
                   _resetFields();
-                  Navigator.pushReplacementNamed(context, '/purchases');
                 }
               },
               child: const Text('Yes'),
@@ -171,7 +199,6 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
 
   void _resetFields() {
     _weightController.clear();
-    _rateController.clear();
     _commodityController.clear();
     _supplierController.clear();
     setState(() {
@@ -286,6 +313,9 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                         );
 
                         _calculateTotalPrice();
+                        _saveLastEnteredRate(double.tryParse(
+                                formattedValue.replaceAll(',', '')) ??
+                            0.0);
                       }
                     },
                   ),
@@ -316,11 +346,13 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                                 _selectedCommodity = suggestion.item;
                                 _commodityController.text =
                                     _selectedCommodity?.name ?? '';
-                                _rateController.text =
-                                    _selectedCommodity?.rate.toString() ?? '';
+                                _rateController.text = NumberFormat('#,##0')
+                                    .format(_selectedCommodity?.rate ?? 0);
                                 _calculateTotalPrice();
                                 _saveSelectedCommodity(
                                     _selectedCommodity!.name);
+                                _saveLastEnteredRate(
+                                    _selectedCommodity?.rate ?? 0.0);
                               });
                               FocusScope.of(context).unfocus();
                             },
@@ -332,7 +364,8 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                                 _selectedCommodity = Commodity(
                                   id: '', // Null for id
                                   name: value,
-                                  rate: double.tryParse(_rateController.text) ??
+                                  rate: double.tryParse(_rateController.text
+                                          .replaceAll(',', '')) ??
                                       0.0,
                                 );
                               }
@@ -429,6 +462,32 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                     ),
                   ),
                   const SizedBox(height: 16.0),
+                  DropdownButtonFormField<String>(
+                    value: _selectedCondition,
+                    decoration: InputDecoration(
+                      labelText: 'Commodity Condition',
+                      border: OutlineInputBorder(
+                        borderSide: BorderSide(color: Colors.grey[300]!),
+                      ),
+                    ),
+                    items: _conditions.map((String condition) {
+                      return DropdownMenuItem<String>(
+                        value: condition,
+                        child: Text(condition),
+                      );
+                    }).toList(),
+                    onChanged: (String? newValue) {
+                      setState(() {
+                        _selectedCondition = newValue!;
+                      });
+                    },
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Please select a condition';
+                      }
+                      return null;
+                    },
+                  ),
                   Text(
                     'Amount: ${NumberFormat('#,##0.00').format(_totalPrice)}',
                     style: const TextStyle(fontWeight: FontWeight.bold),

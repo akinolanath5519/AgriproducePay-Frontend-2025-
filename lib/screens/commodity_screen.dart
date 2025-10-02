@@ -1,11 +1,14 @@
+import 'dart:async';
 import 'package:agriproduce/data_models/commodity_model.dart';
 import 'package:agriproduce/state_management/commodity_provider.dart';
+import 'package:agriproduce/utilis/snack_bar.dart';
 import 'package:agriproduce/widgets/custom_list_tile.dart';
-import 'package:agriproduce/widgets/custom_loading_indicator.dart';
+import 'package:agriproduce/widgets/custom_search_bar.dart';
+import 'package:agriproduce/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:agriproduce/widgets/custom_search_bar.dart';
 import 'package:intl/intl.dart';
+import 'package:shimmer/shimmer.dart';
 
 class CommodityScreen extends ConsumerStatefulWidget {
   const CommodityScreen({super.key});
@@ -16,9 +19,14 @@ class CommodityScreen extends ConsumerStatefulWidget {
 
 class _CommodityScreenState extends ConsumerState<CommodityScreen> {
   bool isLoading = false;
-  TextEditingController nameController = TextEditingController();
-  TextEditingController rateController = TextEditingController();
-  TextEditingController searchController = TextEditingController();
+  bool isCreating = false;
+  bool isUpdating = false;
+  bool isDeleting = false;
+
+  final TextEditingController nameController = TextEditingController();
+  final TextEditingController rateController = TextEditingController();
+  final TextEditingController searchController = TextEditingController();
+  Timer? _debounce;
 
   @override
   void initState() {
@@ -31,167 +39,230 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
     nameController.dispose();
     rateController.dispose();
     searchController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
   Future<void> _fetchCommodities() async {
-    setState(() {
-      isLoading = true;
-    });
+    setState(() => isLoading = true);
 
     try {
       final commodities = ref.read(commodityNotifierProvider);
-      // Only fetch if commodities are not already cached
       if (commodities.isEmpty) {
         await ref
             .read(commodityNotifierProvider.notifier)
             .fetchCommodities(ref);
       }
     } catch (error) {
-      print('Error fetching commodities: $error');
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching commodities')),
-      );
+      showErrorSnackbar(context, 'Error fetching commodities: $error');
     } finally {
-      setState(() {
-        isLoading = false;
-      });
+      setState(() => isLoading = false);
     }
   }
 
+  void _onSearchChanged(String query) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 300), () => setState(() {}));
+  }
+
   void _showCommodityDialog(BuildContext context, {Commodity? commodity}) {
+    final theme = Theme.of(context);
     nameController.text = commodity?.name ?? '';
     rateController.text = commodity?.rate.toString() ?? '';
 
     showDialog(
       context: context,
-      builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(commodity == null
-              ? 'Add Commodity\'s Rate'
-              : 'Edit Commodity\'s '),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextField(
-                  controller: nameController,
-                  decoration: InputDecoration(labelText: 'Commodity Name'),
-                ),
-                SizedBox(height: 12.0),
-                TextField(
-                  controller: rateController,
-                  decoration: InputDecoration(labelText: 'Rate'),
-                  keyboardType: TextInputType.number,
-                ),
-              ],
+      builder: (context) {
+        return StatefulBuilder(builder: (context, setStateDialog) {
+          return AlertDialog(
+            shape:
+                RoundedRectangleBorder(borderRadius: theme.mediumBorderRadius),
+            title: Text(
+              commodity == null
+                  ? 'Add Commodity\'s Rate'
+                  : 'Edit Commodity\'s Rate',
+              style: theme.textTheme.titleLarge,
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(context).pop(),
-              child: Text('Cancel'),
+            content: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  TextField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      labelText: 'Commodity Name',
+                      border: OutlineInputBorder(
+                          borderRadius: theme.mediumBorderRadius),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: rateController,
+                    decoration: InputDecoration(
+                      labelText: 'Rate',
+                      border: OutlineInputBorder(
+                          borderRadius: theme.mediumBorderRadius),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  if (isCreating || isUpdating)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 16.0),
+                      child: CircularProgressIndicator(
+                        valueColor:
+                            AlwaysStoppedAnimation(theme.colorScheme.primary),
+                      ),
+                    ),
+                ],
+              ),
             ),
-            ElevatedButton(
-              onPressed: () async {
-                final name = nameController.text.trim();
-                final rateText = rateController.text.trim();
-                final double? rate = double.tryParse(rateText);
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: Text(
+                  'Cancel',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: theme.colorScheme.primary,
+                  shape: RoundedRectangleBorder(
+                      borderRadius: theme.mediumBorderRadius),
+                ),
+                onPressed: () async {
+                  setStateDialog(() {
+                    isCreating = commodity == null;
+                    isUpdating = commodity != null;
+                  });
 
-                // Rate Validation
-                if (rate == null || rate <= 0) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            'Rate must be a numeric value greater than 0.')),
-                  );
-                  return;
-                }
+                  final name = nameController.text.trim();
+                  final double? rate =
+                      double.tryParse(rateController.text.trim());
 
-                // Uniqueness Check
-                final existingCommodities = ref.read(
-                    commodityNotifierProvider); // Assuming it holds the list
-                final isDuplicate = existingCommodities.any(
-                    (existingCommodity) =>
-                        existingCommodity.name.toLowerCase() ==
-                            name.toLowerCase() &&
-                        (commodity == null ||
-                            existingCommodity.id != commodity.id));
-
-                if (isDuplicate) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Commodity name must be unique.')),
-                  );
-                  return;
-                }
-
-                try {
-                  if (commodity == null) {
-                    await ref
-                        .read(commodityNotifierProvider.notifier)
-                        .createCommodity(
-                          ref,
-                          Commodity(id: '', name: name, rate: rate),
-                        );
-                  } else {
-                    await ref
-                        .read(commodityNotifierProvider.notifier)
-                        .updateCommodity(
-                          ref,
-                          commodity.id,
-                          Commodity(id: commodity.id, name: name, rate: rate),
-                        );
+                  if (rate == null || rate <= 0) {
+                    showErrorSnackbar(context, 'Rate must be greater than 0.');
+                    setStateDialog(() {
+                      isCreating = false;
+                      isUpdating = false;
+                    });
+                    return;
                   }
 
-                  _fetchCommodities();
-                  Navigator.of(context).pop();
-                } catch (error) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                        content: Text(
-                            'Error ${commodity == null ? 'adding' : 'updating'} commodity.')),
+                  final existingCommodities =
+                      ref.read(commodityNotifierProvider);
+                  final isDuplicate = existingCommodities.any(
+                    (c) =>
+                        c.name.toLowerCase() == name.toLowerCase() &&
+                        (commodity == null || c.id != commodity.id),
                   );
-                }
-              },
-              child: Text(commodity == null ? 'Add' : 'Save'),
-            ),
-          ],
-        );
+                  if (isDuplicate) {
+                    showErrorSnackbar(
+                        context, 'Commodity name must be unique.');
+                    setStateDialog(() {
+                      isCreating = false;
+                      isUpdating = false;
+                    });
+                    return;
+                  }
+
+                  try {
+                    if (commodity == null) {
+                      await ref
+                          .read(commodityNotifierProvider.notifier)
+                          .createCommodity(
+                            ref,
+                            Commodity(id: '', name: name, rate: rate),
+                          );
+                    } else {
+                      await ref
+                          .read(commodityNotifierProvider.notifier)
+                          .updateCommodity(
+                            ref,
+                            commodity.id,
+                            Commodity(id: commodity.id, name: name, rate: rate),
+                          );
+                    }
+                    _fetchCommodities();
+                    Navigator.of(context).pop();
+                    showSuccessSnackbar(
+                      context,
+                      commodity == null
+                          ? 'Commodity added successfully!'
+                          : 'Commodity updated successfully!',
+                    );
+                  } catch (_) {
+                    showErrorSnackbar(context,
+                        'Error ${commodity == null ? 'adding' : 'updating'} commodity.');
+                  } finally {
+                    setStateDialog(() {
+                      isCreating = false;
+                      isUpdating = false;
+                    });
+                  }
+                },
+                child: Text(
+                  commodity == null ? 'Add' : 'Save',
+                  style: theme.textTheme.labelLarge,
+                ),
+              ),
+            ],
+          );
+        });
       },
     );
   }
 
-  // Confirm Delete dialog
   void _showDeleteConfirmDialog(BuildContext context, String commodityId) {
+    final theme = Theme.of(context);
+
     showDialog(
       context: context,
-      builder: (BuildContext context) {
+      builder: (context) {
         return AlertDialog(
-          title: Text('Delete Commodity'),
-          content:
-              Text('Are you sure you want to delete this commodity\'s rate?'),
+          shape: RoundedRectangleBorder(borderRadius: theme.mediumBorderRadius),
+          title: Text('Delete Commodity', style: theme.textTheme.titleLarge),
+          content: Text(
+            'Are you sure you want to delete this commodity\'s rate?',
+            style: theme.textTheme.bodyLarge,
+          ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop();
-              },
-              child: Text('Cancel'),
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text('Cancel',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  )),
             ),
             ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.error,
+                shape: RoundedRectangleBorder(
+                    borderRadius: theme.mediumBorderRadius),
+              ),
               onPressed: () async {
+                setState(() => isDeleting = true);
                 try {
                   await ref
                       .read(commodityNotifierProvider.notifier)
                       .deleteCommodity(ref, commodityId);
                   _fetchCommodities();
                   Navigator.of(context).pop();
-                } catch (error) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Error deleting commodity.')),
-                  );
+                  showSuccessSnackbar(
+                      context, 'Commodity deleted successfully!');
+                } catch (_) {
+                  showErrorSnackbar(context, 'Error deleting commodity.');
+                } finally {
+                  setState(() => isDeleting = false);
                 }
               },
-              child: Text('Delete'),
+              child: Text('Delete',
+                  style: theme.textTheme.labelLarge
+                      ?.copyWith(color: Colors.white)),
             ),
           ],
         );
@@ -209,49 +280,62 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final commodities = ref.watch(commodityNotifierProvider);
-
     final filteredCommodities = _filterCommodities(commodities);
 
     return Scaffold(
-      appBar: AppBar(title: Text('Commodities')),
+      appBar: AppBar(
+        title: Text('Commodities',
+            style: theme.textTheme.titleLarge?.copyWith(color: Colors.white)),
+      ),
       body: Stack(
         children: [
-          Container(color: Colors.grey[100]),
+          Container(color: theme.scaffoldBackgroundColor),
           if (isLoading)
-            CustomLoadingIndicator()
+            Shimmer.fromColors(
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Container(color: Colors.white),
+            )
           else
             RefreshIndicator(
               onRefresh: _fetchCommodities,
               child: Column(
                 children: [
-                  CustomSearchBar(
-                    controller: searchController,
-                    hintText: 'Search by name or rate',
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                    onClear: () {
-                      setState(() {
-                        searchController.clear();
-                      });
-                    },
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: CustomSearchBar(
+                      controller: searchController,
+                      hintText: 'Search by name or rate',
+                      onChanged: _onSearchChanged,
+                      onClear: () => setState(() => searchController.clear()),
+                    ),
                   ),
                   Expanded(
                     child: ListView.builder(
-                      padding: EdgeInsets.symmetric(vertical: 16.0),
+                      padding: const EdgeInsets.symmetric(vertical: 16),
                       itemCount: filteredCommodities.length,
                       itemBuilder: (context, index) {
                         final commodity = filteredCommodities[index];
-                        return CustomListTile(
-                          title: commodity.name,
-                          subtitle:
-                              'Rate: ${NumberFormat('#,##0.00').format(commodity.rate)}',
-                          onEdit: () => _showCommodityDialog(context,
-                              commodity: commodity),
-                          onDelete: () {
-                            _showDeleteConfirmDialog(context, commodity.id);
-                          },
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(
+                              vertical: 8, horizontal: 16),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: theme.mediumBorderRadius,
+                            boxShadow: [theme.subtleShadow],
+                          ),
+                          child: CustomListTile(
+                            title: commodity.name,
+                            subtitle:
+                                'Rate: ${NumberFormat('#,##0.00').format(commodity.rate)}',
+                            onEdit: () => _showCommodityDialog(context,
+                                commodity: commodity),
+                            onDelete: () =>
+                                _showDeleteConfirmDialog(context, commodity.id),
+                          ),
                         );
                       },
                       cacheExtent: 300,
@@ -260,11 +344,22 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
                 ],
               ),
             ),
+          if (isCreating || isUpdating || isDeleting)
+            Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: Center(
+                child: CircularProgressIndicator(
+                    valueColor:
+                        AlwaysStoppedAnimation(theme.colorScheme.primary)),
+              ),
+            ),
         ],
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCommodityDialog(context),
-        child: Icon(Icons.add),
+        child: const Icon(Icons.add, color: Colors.white),
       ),
     );
   }

@@ -1,10 +1,11 @@
 import 'package:agriproduce/data_models/companyInfo.dart';
 import 'package:agriproduce/state_management/companyInfo_provider.dart';
 import 'package:agriproduce/widgets/custom_list_tile.dart';
-import 'package:agriproduce/widgets/custom_loading_indicator.dart';
+import 'package:agriproduce/widgets/custom_search_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:agriproduce/widgets/custom_search_bar.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:shimmer/shimmer.dart';
 
 class CompanyInfoScreen extends ConsumerStatefulWidget {
   const CompanyInfoScreen({super.key});
@@ -50,9 +51,7 @@ class _CompanyInfoScreenState extends ConsumerState<CompanyInfoScreen> {
             .fetchCompanyInfos(ref);
       }
     } catch (error) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error fetching company infos')),
-      );
+      _showErrorSnackbar('Error fetching company infos: $error');
     } finally {
       setState(() {
         isLoading = false;
@@ -73,7 +72,7 @@ class _CompanyInfoScreenState extends ConsumerState<CompanyInfoScreen> {
         return Dialog(
           insetPadding: EdgeInsets.symmetric(horizontal: 24),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(16),
           ),
           child: SingleChildScrollView(
             child: Padding(
@@ -85,7 +84,7 @@ class _CompanyInfoScreenState extends ConsumerState<CompanyInfoScreen> {
                     companyInfo == null
                         ? 'Add Company Info'
                         : 'Edit Company Info',
-                    style: TextStyle(
+                    style: GoogleFonts.roboto(
                       fontSize: 22,
                       fontWeight: FontWeight.bold,
                       color: Colors.deepPurple,
@@ -105,10 +104,21 @@ class _CompanyInfoScreenState extends ConsumerState<CompanyInfoScreen> {
                     children: [
                       TextButton(
                         onPressed: () => Navigator.of(context).pop(),
-                        child:
-                            Text('Cancel', style: TextStyle(color: Colors.red)),
+                        child: Text(
+                          'Cancel',
+                          style: GoogleFonts.roboto(
+                            color: Colors.red,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                       ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.deepPurple,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
                         onPressed: () async {
                           final name = nameController.text.trim();
                           final address = addressController.text.trim();
@@ -119,10 +129,7 @@ class _CompanyInfoScreenState extends ConsumerState<CompanyInfoScreen> {
                               address.isEmpty ||
                               phone.isEmpty ||
                               email.isEmpty) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text('All fields are required')),
-                            );
+                            _showErrorSnackbar('All fields are required');
                             return;
                           }
 
@@ -157,17 +164,24 @@ class _CompanyInfoScreenState extends ConsumerState<CompanyInfoScreen> {
                             }
                             _fetchCompanyInfos();
                             Navigator.of(context).pop();
+                            _showSuccessSnackbar(
+                              companyInfo == null
+                                  ? 'Company info added successfully!'
+                                  : 'Company info updated successfully!',
+                            );
                           } catch (error) {
-                            print(
-                                'Error ${companyInfo == null ? 'adding' : 'updating'} company info: $error');
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                  content: Text(
-                                      'Error ${companyInfo == null ? 'adding' : 'updating'} company info')),
+                            _showErrorSnackbar(
+                              'Error ${companyInfo == null ? 'adding' : 'updating'} company info: $error',
                             );
                           }
                         },
-                        child: Text(companyInfo == null ? 'Add' : 'Save'),
+                        child: Text(
+                          companyInfo == null ? 'Add' : 'Save',
+                          style: GoogleFonts.roboto(
+                            color: Colors.white,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -185,7 +199,9 @@ class _CompanyInfoScreenState extends ConsumerState<CompanyInfoScreen> {
       controller: controller,
       decoration: InputDecoration(
         labelText: label,
-        border: OutlineInputBorder(),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
         filled: true,
         fillColor: Colors.white,
       ),
@@ -202,39 +218,86 @@ class _CompanyInfoScreenState extends ConsumerState<CompanyInfoScreen> {
     }).toList();
   }
 
+  void _showSuccessSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.roboto(color: Colors.white),
+        ),
+        backgroundColor: Colors.green,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
+  void _showErrorSnackbar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          message,
+          style: GoogleFonts.roboto(color: Colors.white),
+        ),
+        backgroundColor: Colors.red,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final companyInfos = ref.watch(companyInfoNotifierProvider);
-
     final filteredCompanyInfos = _filterCompanyInfos(companyInfos);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Company Info', style: TextStyle(color: Colors.white)),
+        title: Text(
+          'Company Info',
+          style: GoogleFonts.roboto(
+            fontSize: 24,
+            fontWeight: FontWeight.bold,
+            color: Colors.white,
+          ),
+        ),
         backgroundColor: Colors.deepPurple,
-        
+        elevation: 0,
       ),
       body: Stack(
         children: [
           Container(color: Colors.grey[100]),
           if (isLoading)
-            CustomLoadingIndicator()
+            Shimmer.fromColors(
+              baseColor: Colors.grey[300]!,
+              highlightColor: Colors.grey[100]!,
+              child: Container(
+                color: Colors.white,
+              ),
+            )
           else
             RefreshIndicator(
               onRefresh: _fetchCompanyInfos,
               child: Column(
                 children: [
-                  CustomSearchBar(
-                    controller: searchController,
-                    hintText: 'Search by name, address, phone or email',
-                    onChanged: (value) {
-                      setState(() {});
-                    },
-                    onClear: () {
-                      setState(() {
-                        searchController.clear();
-                      });
-                    },
+                  Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: CustomSearchBar(
+                      controller: searchController,
+                      hintText: 'Search by name, address, phone or email',
+                      onChanged: (value) {
+                        setState(() {});
+                      },
+                      onClear: () {
+                        setState(() {
+                          searchController.clear();
+                        });
+                      },
+                    ),
                   ),
                   Expanded(
                     child: ListView.builder(
@@ -242,17 +305,35 @@ class _CompanyInfoScreenState extends ConsumerState<CompanyInfoScreen> {
                       itemCount: filteredCompanyInfos.length,
                       itemBuilder: (context, index) {
                         final companyInfo = filteredCompanyInfos[index];
-                        return CustomListTile(
-                          title: companyInfo.name,
-                          subtitle:
-                              'Address: ${companyInfo.address}\nPhone: ${companyInfo.phone}\nEmail: ${companyInfo.email}',
-                          onEdit: () => _showCompanyInfoDialog(context,
-                              companyInfo: companyInfo),
-                          onDelete: () {
-                            ref
-                                .read(companyInfoNotifierProvider.notifier)
-                                .deleteCompanyInfo(ref, companyInfo.id);
-                          },
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(
+                            vertical: 8.0,
+                            horizontal: 16.0,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12.0),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.1),
+                                blurRadius: 8,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: CustomListTile(
+                            title: companyInfo.name,
+                            subtitle:
+                                'Address: ${companyInfo.address}\nPhone: ${companyInfo.phone}\nEmail: ${companyInfo.email}',
+                            onEdit: () => _showCompanyInfoDialog(context,
+                                companyInfo: companyInfo),
+                            onDelete: () {
+                              ref
+                                  .read(companyInfoNotifierProvider.notifier)
+                                  .deleteCompanyInfo(ref, companyInfo.id);
+                            },
+                          ),
                         );
                       },
                       cacheExtent: 300,
@@ -266,7 +347,7 @@ class _CompanyInfoScreenState extends ConsumerState<CompanyInfoScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCompanyInfoDialog(context),
         backgroundColor: Colors.deepPurple,
-        child: Icon(Icons.add),
+        child: Icon(Icons.add, color: Colors.white),
       ),
     );
   }

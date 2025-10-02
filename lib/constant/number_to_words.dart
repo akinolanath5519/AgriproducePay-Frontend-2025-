@@ -3,42 +3,6 @@
 String convertNumberToWords(double number) {
   if (number == 0) return 'Zero';
 
-  const List<String> units = [
-    '',
-    'One',
-    'Two',
-    'Three',
-    'Four',
-    'Five',
-    'Six',
-    'Seven',
-    'Eight',
-    'Nine',
-    'Ten',
-    'Eleven',
-    'Twelve',
-    'Thirteen',
-    'Fourteen',
-    'Fifteen',
-    'Sixteen',
-    'Seventeen',
-    'Eighteen',
-    'Nineteen',
-  ];
-
-  const List<String> tens = [
-    '',
-    '',
-    'Twenty',
-    'Thirty',
-    'Forty',
-    'Fifty',
-    'Sixty',
-    'Seventy',
-    'Eighty',
-    'Ninety',
-  ];
-
   const List<String> thousands = [
     '',
     'Thousand',
@@ -56,7 +20,8 @@ String convertNumberToWords(double number) {
     while (intPart > 0) {
       int chunk = intPart % 1000;
       if (chunk > 0) {
-        words = '${_convertChunkToWords(chunk)}${thousands[thousandCounter] != '' ? ' ' + thousands[thousandCounter] : ''} $words';
+        words =
+            '${_convertChunkToWords(chunk)}${thousands[thousandCounter] != '' ? ' ' + thousands[thousandCounter] : ''} $words';
       }
       intPart ~/= 1000;
       thousandCounter++;

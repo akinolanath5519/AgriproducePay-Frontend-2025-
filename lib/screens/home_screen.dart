@@ -1,13 +1,15 @@
+import 'package:agriproduce/screens/sack_screen.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:agriproduce/screens/bulkweight_screen.dart';
 import 'package:agriproduce/screens/commodity_screen.dart';
 import 'package:agriproduce/screens/sales_screen.dart';
 import 'package:agriproduce/screens/supplier_screen.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:agriproduce/widgets/analytics_card.dart';
-import 'package:agriproduce/widgets/management_options.dart';
 import 'package:agriproduce/state_management/supplier_provider.dart';
 import 'package:agriproduce/state_management/transaction_provider.dart';
+import 'package:agriproduce/state_management/auth_provider.dart';
+import 'package:skeleton_loader/skeleton_loader.dart';
 
 class HomeScreen extends ConsumerStatefulWidget {
   final bool isAdmin;
@@ -21,7 +23,6 @@ class HomeScreen extends ConsumerStatefulWidget {
 class _HomeScreenState extends ConsumerState<HomeScreen> {
   bool isAnalyticsLoading = true;
 
-  // Fetch only analytics-related data
   Future<void> _fetchAnalyticsData() async {
     try {
       final supplierState = ref.read(supplierNotifierProvider);
@@ -38,7 +39,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
       print('Error fetching analytics data: $error');
     } finally {
       setState(() {
-        isAnalyticsLoading = false; // Set loading state for analytics
+        isAnalyticsLoading = false;
       });
     }
   }
@@ -46,45 +47,106 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   @override
   void initState() {
     super.initState();
-    _fetchAnalyticsData(); // Fetch analytics data on init
+    _fetchAnalyticsData();
   }
 
   @override
   Widget build(BuildContext context) {
-    // Fetch data from providers
     final suppliers = ref.watch(supplierNotifierProvider);
     final transactions = ref.watch(transactionProvider);
+    final user = ref.watch(userProvider);
+
+    final options = [
+      {
+        'title': 'Add Supplier',
+        'icon': Icons.person_add,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SupplierScreen()),
+          );
+        },
+      },
+      if (widget.isAdmin)
+        {
+          'title': 'Add Commodity\'s Rate',
+          'icon': Icons.inventory,
+          'onTap': () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const CommodityScreen()),
+            );
+          },
+        },
+      {
+        'title': 'Add Bulk Weight',
+        'icon': Icons.scale,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const BulkWeightScreen()),
+          );
+        },
+      },
+      {
+        'title': 'Sales',
+        'icon': Icons.shopping_cart,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const SalesScreen()),
+          );
+        },
+      },
+      {
+        'title': 'Sack Management',
+        'icon': Icons.shopping_bag,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) =>  SackManagementScreen()),
+          );
+        },
+      },
+    ];
 
     return Scaffold(
       body: RefreshIndicator(
-        onRefresh: _fetchAnalyticsData, // Trigger refresh
+        onRefresh: _fetchAnalyticsData,
         child: ListView(
           padding: const EdgeInsets.all(16.0),
           children: [
-            const SizedBox(height: 20),
+            const SizedBox(height: 10),
             Text(
-              'Welcome back! 👋',
+              user != null
+                  ? 'Welcome back, ${user.name}! 👋'
+                  : 'Welcome back! 👋',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
                     color: Colors.purple,
                   ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 10),
-            Text(
-              'Welcome to your agriproduce hub! Let’s cultivate progress together.',
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Colors.grey[700],
-                  ),
-              textAlign: TextAlign.center,
-            ),
             const SizedBox(height: 20),
-            // Analytics Section
             isAnalyticsLoading
-                ? const Center(
-                    child: CircularProgressIndicator(
-                    color: Colors.deepPurple,
-                  ))
+                ? SkeletonLoader(
+                    builder: Container(
+                      height: 200,
+                      color: Colors.white,
+                      child: Column(
+                        children: List.generate(3, (index) {
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 8.0),
+                            child: SkeletonLoader(
+                              builder: Container(
+                                height: 30,
+                                color: Colors.grey[300],
+                              ),
+                            ),
+                          );
+                        }),
+                      ),
+                    ),
+                  )
                 : AnalyticsCard(
                     title: 'Analytics Overview',
                     data: [
@@ -98,57 +160,42 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
                       },
                     ],
                   ),
-            const SizedBox(height: 20),
-            // Management Options
-            ManagementOptions(
-              options: [
-                {
-                  'title': 'Add Supplier',
-                  'icon': Icons.person_add,
-                  'onTap': () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const SupplierScreen()),
-                    );
-                  },
-                },
-                if (widget.isAdmin)
-                  {
-                    'title': 'Add Commodity\'s Rate',
-                    'icon': Icons.inventory,
-                    'onTap': () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const CommodityScreen()),
-                      );
-                    },
-                  },
-                {
-                  'title': 'Add Bulk Weight',
-                  'icon': Icons.scale,
-                  'onTap': () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => const BulkWeightScreen(),
-                      ),
-                    );
-                  },
-                },
-                {
-                  'title': 'Sales',
-                  'icon': Icons.shopping_cart,
-                  'onTap': () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const SalesScreen()),
-                    );
-                  },
-                },
-              ],
+            const SizedBox(height: 5),
+            // ✅ GridView for management options
+            GridView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: options.length,
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2, // 2 items per row
+                crossAxisSpacing: 5,
+                mainAxisSpacing: 5,
+                childAspectRatio: 1.2,
+              ),
+              itemBuilder: (context, index) {
+                final option = options[index];
+                return GestureDetector(
+                  onTap: option['onTap'] as void Function()?,
+                  child: Card(
+                    elevation: 2,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(option['icon'] as IconData,
+                            size: 30, color: Colors.deepPurple),
+                        const SizedBox(height: 8),
+                        Text(
+                          option['title'] as String,
+                          style: const TextStyle(fontSize: 14),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
             ),
           ],
         ),

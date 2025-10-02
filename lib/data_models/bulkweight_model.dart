@@ -1,6 +1,6 @@
 class BulkWeight {
   final String? id; // Make id nullable
-  final int bags;
+  final double bags; // Changed bags to double
   final double weight;
   final int cumulativeBags;
   final double cumulativeWeight;
@@ -22,7 +22,7 @@ class BulkWeight {
   factory BulkWeight.fromJson(Map<String, dynamic> json) {
     return BulkWeight(
       id: json['id']?.toString(), // Ensure id is a String or null
-      bags: json['bags'],
+      bags: json['bags']?.toDouble() ?? 0.0, // Ensure bags is treated as a double, defaulting to 0.0
       weight: json['weight'].toDouble(),
       cumulativeBags: json['cumulativeBags'],
       cumulativeWeight: json['cumulativeWeight'].toDouble(),

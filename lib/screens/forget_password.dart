@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:agriproduce/constant/config.dart';
 import 'dart:convert';
+import 'dart:developer'; // Add this import for logging
 
 class ForgetPasswordScreen extends StatefulWidget {
   const ForgetPasswordScreen({super.key});
@@ -60,6 +61,9 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen>
         _isLoading = false;
       });
 
+      log('Response status: ${response.statusCode}');
+      log('Response body: ${response.body}');
+
       if (response.statusCode == 200) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -68,6 +72,13 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen>
               style: TextStyle(color: Colors.white),
             ),
             backgroundColor: Colors.green,
+          ),
+        );
+      } else if (response.statusCode == 500) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Server error. Please try again later.'),
+            backgroundColor: Colors.red,
           ),
         );
       } else {
@@ -82,6 +93,8 @@ class _ForgetPasswordScreenState extends State<ForgetPasswordScreen>
       setState(() {
         _isLoading = false;
       });
+
+      log('Exception: $e');
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(

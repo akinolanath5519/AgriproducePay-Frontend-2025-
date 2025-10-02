@@ -14,7 +14,7 @@ class AuthService {
   Future<User?> login(String email, String password, WidgetRef ref) async {
     try {
       final response = await http.post(
-        Uri.parse('${Config.baseUrl}/login'),
+        Uri.parse('${Config.baseUrl}/auth/login'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'email': email,
@@ -24,15 +24,24 @@ class AuthService {
 
       if (response.statusCode == 200) {
         final responseData = jsonDecode(response.body);
-        final user = User.fromJson(responseData); // Parse directly into User model
+
+        // ✅ Extract token separately
+        final token = responseData['token'];
+        if (token == null || token.isEmpty) {
+          throw Exception("No token received from server");
+        }
+
+        // ✅ Parse user object
+        final user = User.fromJson(responseData['user']);
 
         // Save token
-        await saveToken(user.token, ref);
+        await saveToken(token, ref);
 
-        // Set user data to the userProvider
+        // Set user data
         ref.read(userProvider.notifier).setUser(user);
 
         AppLogger.logInfo('Login successful for $email');
+
         return user;
       } else {
         HttpErrorHandler.handleResponse(response, 'Failed to log in');
@@ -49,7 +58,7 @@ class AuthService {
       String name, String email, String password) async {
     try {
       final response = await http.post(
-        Uri.parse('${Config.baseUrl}/register-admin'),
+        Uri.parse('${Config.baseUrl}/auth/register-admin'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'name': name,
@@ -75,7 +84,7 @@ class AuthService {
       String name, String email, String password, String adminEmail) async {
     try {
       final response = await http.post(
-        Uri.parse('${Config.baseUrl}/register-standard'),
+        Uri.parse('${Config.baseUrl}/auth/register-standard'),
         headers: {'Content-Type': 'application/json'},
         body: jsonEncode({
           'name': name,
@@ -127,9 +136,7 @@ class AuthService {
     }
   }
 
-  
-
- // Logout Method
+  // Logout Method
   Future<void> logout(WidgetRef ref) async {
     try {
       await clearToken(ref);
@@ -139,5 +146,48 @@ class AuthService {
       AppLogger.logError('Error during logout: $e');
       rethrow;
     }
+  }
+}
+
+Future<Map<String, dynamic>?> getUsers(WidgetRef ref) async {
+  final token = ref.read(tokenProvider);
+  if (token == null) {
+    AppLogger.logError('Token is null, cannot fetch users');
+    throw Exception('User not authenticated');
+  }
+
+  try {
+    final response = await http.get(
+      Uri.parse('${Config.baseUrl}/auth/get/adminanduser'),
+      headers: {
+        'Authorization': 'Bearer $token',
+      },
+    );
+
+    HttpErrorHandler.handleResponse(response, 'fetch users');
+
+    if (response.body.isEmpty) {
+      return null;
+    }
+
+    final responseData = jsonDecode(response.body);
+
+    // Admin info
+    final adminData = responseData['admin'];
+    final admin = adminData != null ? User.fromJson(adminData) : null;
+
+    // Associated users
+    final associatedUsersJson =
+        responseData['associatedUsers'] as List<dynamic>;
+    final associatedUsers =
+        associatedUsersJson.map((u) => User.fromJson(u)).toList();
+
+    return {
+      "admin": admin,
+      "associatedUsers": associatedUsers,
+    };
+  } catch (e, stackTrace) {
+    AppLogger.logError('Error fetching users: $e', e, stackTrace);
+    rethrow;
   }
 }

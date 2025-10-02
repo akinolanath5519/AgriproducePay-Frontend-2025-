@@ -6,7 +6,7 @@ class UserNotifier extends StateNotifier<User?> {
 
   // Set the user after login
   void setUser(User user) {
-    print('Setting user: ${user.name}, ${user.email}, ${user.role}'); // Debugging print
+    print('Setting user: ${user.name}, ${user.email}, ${user.role}'); 
     state = user;
   }
 

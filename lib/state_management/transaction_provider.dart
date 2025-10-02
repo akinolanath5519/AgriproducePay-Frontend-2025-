@@ -39,6 +39,18 @@ class TransactionNotifier extends StateNotifier<List<Transaction>> {
     }
   }
 
+  // Method to update a transaction
+  Future<void> updateTransaction(
+      WidgetRef ref, String transactionId, Transaction transaction) async {
+    try {
+      await _transactionService.updateTransaction(ref, transactionId, transaction);
+      await fetchTransactions(ref); // Refresh the transaction list
+    } catch (e) {
+      print('Error updating transaction: $e'); // Log error
+      throw Exception('Failed to update transaction: $e');
+    }
+  }
+
   // Method to delete a transaction
   Future<void> deleteTransaction(WidgetRef ref, String id) async {
     try {

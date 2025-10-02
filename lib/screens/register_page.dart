@@ -1,11 +1,9 @@
 import 'package:flutter/material.dart';
-import 'package:agriproduce/widgets/custom_button.dart';
 import 'package:agriproduce/widgets/custom_snackbar.dart';
-import 'package:agriproduce/widgets/custom_decorations.dart';
-import 'package:agriproduce/widgets/custom_text.dart';
 import 'package:agriproduce/widgets/custom_text_field.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:agriproduce/services/auth_service.dart';
+import 'package:agriproduce/theme/app_theme.dart';
 import 'login_page.dart';
 
 class RegisterPage extends ConsumerStatefulWidget {
@@ -15,7 +13,7 @@ class RegisterPage extends ConsumerStatefulWidget {
   _RegisterPageState createState() => _RegisterPageState();
 }
 
-class _RegisterPageState extends ConsumerState<RegisterPage> {
+class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _emailController = TextEditingController();
@@ -25,9 +23,33 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   bool _isLoading = false;
 
   final AuthService _authService = AuthService();
+  late AnimationController _animationController;
+  late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _animationController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 1000),
+    );
+    
+    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+    
+    _slideAnimation = Tween<Offset>(
+      begin: const Offset(0, 0.1),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
+    
+    _animationController.forward();
+  }
 
   @override
   void dispose() {
+    _animationController.dispose();
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
@@ -59,7 +81,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
           CustomSnackBar.show(
             context,
             'Registration successful! Please login.',
-            backgroundColor: Colors.green,
+            backgroundColor: AppColors.successGreen,
           );
           Navigator.pushReplacement(
             context,
@@ -68,15 +90,15 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
         } else {
           CustomSnackBar.show(
             context,
-            'Registration failed. Try again.',
-            backgroundColor: Colors.red,
+            'Registration failed. Please try again.',
+            backgroundColor: AppColors.error,
           );
         }
       } catch (e) {
         CustomSnackBar.show(
           context,
           'An error occurred: $e',
-          backgroundColor: Colors.red,
+          backgroundColor: AppColors.error,
         );
       } finally {
         setState(() {
@@ -90,163 +112,458 @@ class _RegisterPageState extends ConsumerState<RegisterPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: CustomDecorations.backgroundDecoration(
-          imagePath: 'assets/farmer.jpg',
-          color: Colors.black54,
-          blendMode: BlendMode.darken,
+        decoration: BoxDecoration(
+          gradient: AppColors.backgroundGradient,
         ),
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Form(
-              key: _formKey,
-              autovalidateMode: AutovalidateMode.onUserInteraction,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const SizedBox(height: 20),
-                  const CustomText(
-                    text: 'Create an Account',
-                    fontSize: 28,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  const SizedBox(height: 20),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isAdmin = true;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: _isAdmin
-                                ? Colors.deepPurple
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: _isAdmin
-                                  ? Colors.white
-                                  : Colors.white.withOpacity(0.5),
-                              width: 2,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.admin_panel_settings,
-                                size: 50,
-                                color: _isAdmin ? Colors.white : Colors.grey,
-                              ),
-                              const CustomText(
-                                  text: 'Admin', color: Colors.white),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 40),
-                      GestureDetector(
-                        onTap: () {
-                          setState(() {
-                            _isAdmin = false;
-                          });
-                        },
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          padding: const EdgeInsets.all(8),
-                          decoration: BoxDecoration(
-                            color: !_isAdmin
-                                ? Colors.deepPurple
-                                : Colors.transparent,
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: !_isAdmin
-                                  ? Colors.white
-                                  : Colors.white.withOpacity(0.5),
-                              width: 2,
-                            ),
-                          ),
-                          child: Column(
-                            children: [
-                              Icon(
-                                Icons.person,
-                                size: 50,
-                                color: !_isAdmin ? Colors.white : Colors.grey,
-                              ),
-                              const CustomText(
-                                  text: 'Standard User', color: Colors.white),
-                            ],
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-                  CustomTextField(
-                    controller: _nameController,
-                    label: 'Name',
-                    hintText: 'Enter your name',
-                  ),
-                  const SizedBox(height: 20),
-                  CustomTextField(
-                    controller: _emailController,
-                    label: 'Email',
-                    hintText: 'Enter your email',
-                    keyboardType: TextInputType.emailAddress,
-                  ),
-                  const SizedBox(height: 20),
-                  CustomTextField(
-                    controller: _passwordController,
-                    label: 'Password',
-                    hintText: 'Enter your password',
-                    keyboardType: TextInputType.visiblePassword,
-                  ),
-                  const SizedBox(height: 20),
-                  if (!_isAdmin)
-                    CustomTextField(
-                      controller: _adminEmailController,
-                      label: 'Admin Email',
-                      hintText: 'Enter admin email',
-                      keyboardType: TextInputType.emailAddress,
-                    ),
-                  const SizedBox(height: 20),
-                  _isLoading
-                      ? const CircularProgressIndicator(
-                          color: Colors.deepPurple,
-                        )
-                      : CustomButton(
-                          onPressed: _register,
-                          text: 'Register',
-                          width: double.infinity,
-                          padding: const EdgeInsets.symmetric(vertical: 16.0),
-                          color: Colors.deepPurple,
-                          borderRadius: BorderRadius.circular(30),
-                          elevation: 15,
-                          shadowColor: Colors.black.withOpacity(0.5),
-                        ),
-                  const SizedBox(height: 20),
-                  TextButton(
-                    onPressed: () {
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) => const LoginPage()),
-                      );
-                    },
-                    child: const CustomText(
-                      text: 'Already have an account? Login',
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
+        child: Stack(
+          children: [
+            // Background decorative elements
+            Positioned(
+              top: -80,
+              left: -80,
+              child: Container(
+                width: 250,
+                height: 250,
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                ),
               ),
             ),
-          ),
+            Positioned(
+              bottom: -100,
+              right: -100,
+              child: Container(
+                width: 300,
+                height: 300,
+                decoration: BoxDecoration(
+                  color: AppColors.accent.withOpacity(0.05),
+                  shape: BoxShape.circle,
+                ),
+              ),
+            ),
+            
+            Center(
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.symmetric(horizontal: 24),
+                child: SlideTransition(
+                  position: _slideAnimation,
+                  child: FadeTransition(
+                    opacity: _fadeAnimation,
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        // Hero Section
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 32),
+                          child: Column(
+                            children: [
+                              Container(
+                                width: 70,
+                                height: 70,
+                                decoration: BoxDecoration(
+                                  gradient: AppColors.primaryGradient,
+                                  shape: BoxShape.circle,
+                                  boxShadow: [AppShadows.glow],
+                                ),
+                                child: const Icon(
+                                  Icons.person_add_alt_1,
+                                  color: Colors.white,
+                                  size: 35,
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                'Join AgriProduce',
+                                style: AppText.displayLarge.copyWith(
+                                  color: AppColors.deepCharcoal,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                'Start your agricultural journey',
+                                style: AppText.captionLuxury.copyWith(
+                                  color: AppColors.textSecondary,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        
+                        // Registration Card
+                        Container(
+                          decoration: BoxDecoration(
+                            borderRadius: AppBorderRadius.large,
+                            boxShadow: [AppShadows.medium],
+                          ),
+                          child: Card(
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: AppBorderRadius.large,
+                            ),
+                            color: Colors.white.withOpacity(0.95),
+                            child: Padding(
+                              padding: const EdgeInsets.all(32),
+                              child: Form(
+                                key: _formKey,
+                                autovalidateMode: AutovalidateMode.onUserInteraction,
+                                child: Column(
+                                  children: [
+                                    // Header with decorative line
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Create Account',
+                                          style: AppText.heading1.copyWith(
+                                            color: AppColors.deepCharcoal,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 8),
+                                        Container(
+                                          width: 60,
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                            gradient: AppColors.primaryGradient,
+                                            borderRadius: BorderRadius.circular(2),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                    
+                                    const SizedBox(height: 32),
+                                    
+                                    // Role Selection
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Select Role',
+                                          style: AppText.body.copyWith(
+                                            fontWeight: FontWeight.w600,
+                                            color: AppColors.deepCharcoal,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 16),
+                                        Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                          children: [
+                                            // Admin Option
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _isAdmin = true;
+                                                  });
+                                                },
+                                                child: AnimatedContainer(
+                                                  duration: const Duration(milliseconds: 300),
+                                                  margin: const EdgeInsets.only(right: 8),
+                                                  padding: const EdgeInsets.all(16),
+                                                  decoration: BoxDecoration(
+                                                    gradient: _isAdmin 
+                                                      ? AppColors.primaryGradient 
+                                                      : LinearGradient(
+                                                          colors: [Colors.grey.shade100, Colors.grey.shade100],
+                                                        ),
+                                                    borderRadius: AppBorderRadius.medium,
+                                                    border: Border.all(
+                                                      color: _isAdmin 
+                                                        ? AppColors.primary 
+                                                        : Colors.grey.shade300,
+                                                      width: 2,
+                                                    ),
+                                                    boxShadow: _isAdmin ? [AppShadows.subtle] : [],
+                                                  ),
+                                                  child: Column(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.admin_panel_settings,
+                                                        size: 40,
+                                                        color: _isAdmin ? Colors.white : AppColors.textSecondary,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      Text(
+                                                        'Admin',
+                                                        style: AppText.body.copyWith(
+                                                          color: _isAdmin ? Colors.white : AppColors.textSecondary,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            
+                                            // Standard User Option
+                                            Expanded(
+                                              child: GestureDetector(
+                                                onTap: () {
+                                                  setState(() {
+                                                    _isAdmin = false;
+                                                  });
+                                                },
+                                                child: AnimatedContainer(
+                                                  duration: const Duration(milliseconds: 300),
+                                                  margin: const EdgeInsets.only(left: 8),
+                                                  padding: const EdgeInsets.all(16),
+                                                  decoration: BoxDecoration(
+                                                    gradient: !_isAdmin 
+                                                      ? AppColors.primaryGradient 
+                                                      : LinearGradient(
+                                                          colors: [Colors.grey.shade100, Colors.grey.shade100],
+                                                        ),
+                                                    borderRadius: AppBorderRadius.medium,
+                                                    border: Border.all(
+                                                      color: !_isAdmin 
+                                                        ? AppColors.primary 
+                                                        : Colors.grey.shade300,
+                                                      width: 2,
+                                                    ),
+                                                    boxShadow: !_isAdmin ? [AppShadows.subtle] : [],
+                                                  ),
+                                                  child: Column(
+                                                    children: [
+                                                      Icon(
+                                                        Icons.person,
+                                                        size: 40,
+                                                        color: !_isAdmin ? Colors.white : AppColors.textSecondary,
+                                                      ),
+                                                      const SizedBox(height: 8),
+                                                      Text(
+                                                        'Standard User',
+                                                        style: AppText.body.copyWith(
+                                                          color: !_isAdmin ? Colors.white : AppColors.textSecondary,
+                                                          fontWeight: FontWeight.w600,
+                                                        ),
+                                                        textAlign: TextAlign.center,
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ],
+                                    ),
+                                    
+                                    const SizedBox(height: 32),
+                                    
+                                    // Form Fields
+                                    Column(
+                                      children: [
+                                        // Name Field
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Full Name',
+                                              style: AppText.body.copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.deepCharcoal,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            CustomTextField(
+                                              controller: _nameController,
+                                              label: '',
+                                              hintText: 'Enter your full name',
+                                              prefixIcon: Icons.person_outline,
+                                            ),
+                                          ],
+                                        ),
+                                        
+                                        const SizedBox(height: 20),
+                                        
+                                        // Email Field
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Email Address',
+                                              style: AppText.body.copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.deepCharcoal,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            CustomTextField(
+                                              controller: _emailController,
+                                              label: '',
+                                              hintText: 'Enter your email',
+                                              keyboardType: TextInputType.emailAddress,
+                                              prefixIcon: Icons.email_outlined,
+                                            ),
+                                          ],
+                                        ),
+                                        
+                                        const SizedBox(height: 20),
+                                        
+                                        // Password Field
+                                        Column(
+                                          crossAxisAlignment: CrossAxisAlignment.start,
+                                          children: [
+                                            Text(
+                                              'Password',
+                                              style: AppText.body.copyWith(
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.deepCharcoal,
+                                              ),
+                                            ),
+                                            const SizedBox(height: 8),
+                                            CustomTextField(
+                                              controller: _passwordController,
+                                              label: '',
+                                              hintText: 'Create a strong password',
+                                              keyboardType: TextInputType.visiblePassword,
+                                              prefixIcon: Icons.lock_outline,
+                                              isPassword: true,
+                                            ),
+                                          ],
+                                        ),
+                                        
+                                        const SizedBox(height: 20),
+                                        
+                                        // Admin Email Field (Conditional)
+                                        if (!_isAdmin)
+                                          Column(
+                                            crossAxisAlignment: CrossAxisAlignment.start,
+                                            children: [
+                                              Text(
+                                                'Admin Email Reference',
+                                                style: AppText.body.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                  color: AppColors.deepCharcoal,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              CustomTextField(
+                                                controller: _adminEmailController,
+                                                label: '',
+                                                hintText: 'Enter your admin\'s email',
+                                                keyboardType: TextInputType.emailAddress,
+                                                prefixIcon: Icons.admin_panel_settings_outlined,
+                                              ),
+                                            ],
+                                          ),
+                                      ],
+                                    ),
+                                    
+                                    const SizedBox(height: 32),
+                                    
+                                    // Register Button
+                                    _isLoading
+                                        ? Container(
+                                            width: double.infinity,
+                                            height: 56,
+                                            decoration: BoxDecoration(
+                                              gradient: AppColors.primaryGradient,
+                                              borderRadius: AppBorderRadius.medium,
+                                              boxShadow: [AppShadows.subtle],
+                                            ),
+                                            child: const Center(
+                                              child: SizedBox(
+                                                width: 24,
+                                                height: 24,
+                                                child: CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                        : Container(
+                                            decoration: BoxDecoration(
+                                              gradient: AppColors.primaryGradient,
+                                              borderRadius: AppBorderRadius.medium,
+                                              boxShadow: [AppShadows.subtle],
+                                            ),
+                                            child: ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: Colors.transparent,
+                                                shadowColor: Colors.transparent,
+                                                minimumSize: const Size(double.infinity, 56),
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius: AppBorderRadius.medium,
+                                                ),
+                                              ),
+                                              onPressed: _register,
+                                              child: Row(
+                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                children: [
+                                                  Text(
+                                                    'Create Account',
+                                                    style: AppText.button.copyWith(
+                                                      fontSize: 16,
+                                                      fontWeight: FontWeight.w600,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(width: 8),
+                                                  const Icon(Icons.arrow_forward, size: 20),
+                                                ],
+                                              ),
+                                            ),
+                                          ),
+                                    
+                                    const SizedBox(height: 24),
+                                    
+                                    // Login Redirect
+                                    Row(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          'Already have an account? ',
+                                          style: AppText.bodySecondary,
+                                        ),
+                                        TextButton(
+                                          onPressed: () {
+                                            Navigator.pushReplacement(
+                                              context,
+                                              MaterialPageRoute(
+                                                  builder: (context) => const LoginPage()),
+                                            );
+                                          },
+                                          style: TextButton.styleFrom(
+                                            padding: EdgeInsets.zero,
+                                          ),
+                                          child: Text(
+                                            'Sign In',
+                                            style: AppText.body.copyWith(
+                                              color: AppColors.primary,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 40),
+                        
+                        // Footer
+                        Text(
+                          'Secure • Reliable • Agricultural-Focused',
+                          style: AppText.captionLuxury.copyWith(
+                            color: AppColors.textSecondary.withOpacity(0.7),
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 20),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

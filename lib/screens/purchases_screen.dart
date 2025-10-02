@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:agriproduce/constant/download_report.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
+import 'package:agriproduce/data_models/transaction_model.dart';
 
 class PurchasesScreen extends ConsumerStatefulWidget {
   final bool isAdmin;
@@ -22,6 +23,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
   String? errorMessage;
   DateTime? startDate;
   DateTime? endDate;
+  String? selectedCondition;
 
   @override
   void initState() {
@@ -61,8 +63,10 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
     );
     if (picked != null) {
       setState(() {
-        startDate = picked.start;
-        endDate = picked.end;
+        startDate = DateTime(picked.start.year, picked.start.month,
+            picked.start.day); // Reset to start of the day
+        endDate = DateTime(picked.end.year, picked.end.month, picked.end.day,
+            23, 59, 59); // Set to end of the day
       });
     }
   }
@@ -75,7 +79,9 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
   }
 
   Future<void> _deleteTransaction(
-      BuildContext context, String transactionId) async {
+    BuildContext context,
+    String transactionId,
+  ) async {
     final shouldDelete = await showDialog<bool>(
       context: context,
       builder: (context) {
@@ -106,8 +112,13 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
           const SnackBar(content: Text('Transaction deleted successfully')),
         );
       } catch (e) {
+        // Display a more user-friendly error message
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to delete transaction: $e')),
+          SnackBar(
+            content: Text(
+              'Failed to delete transaction, check your internet connection',
+            ),
+          ),
         );
       }
     }
@@ -121,10 +132,161 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
     );
   }
 
+  void _editTransaction(BuildContext context, Transaction transaction) {
+    final TextEditingController weightController = TextEditingController(
+        text: NumberFormat('#,##0.00').format(transaction.weight));
+    final TextEditingController rateController = TextEditingController(
+        text: NumberFormat('#,##0.00').format(transaction.rate));
+    final TextEditingController commodityController =
+        TextEditingController(text: transaction.commodityName ?? '');
+    final TextEditingController supplierController =
+        TextEditingController(text: transaction.supplierName ?? '');
+    final TextEditingController dateController = TextEditingController(
+        text: DateFormat('dd-MM-yyyy').format(transaction.transactionDate!));
+
+    String selectedUnit = transaction.unit;
+
+    final Map<String, double> unitWeights = {
+      'Metric tonne': 1000.0,
+      'Polythene': 1027.0,
+      'Tare': 1014.0,
+      'Jute': 1040.0,
+    };
+
+// Dynamically set unitWeight based on selectedUnit, with a default fallback to 'Polythene'
+    double unitWeight = unitWeights[selectedUnit] ?? unitWeights['Polythene']!;
+
+    double _calculateTotalPrice(double weight, double rate) {
+      return (weight / unitWeight) * rate;
+    }
+
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('Edit Transaction'),
+          content: SingleChildScrollView(
+            child: Column(
+              children: [
+                TextField(
+                  controller: weightController,
+                  decoration: const InputDecoration(labelText: 'Weight'),
+                  keyboardType: TextInputType.number,
+                ),
+                SizedBox(height: 6),
+                DropdownButtonFormField<String>(
+                  value: selectedUnit,
+                  decoration: const InputDecoration(labelText: 'Unit'),
+                  items: unitWeights.keys.map((String unit) {
+                    return DropdownMenuItem<String>(
+                      value: unit,
+                      child: Text(unit),
+                    );
+                  }).toList(),
+                  onChanged: (String? newValue) {
+                    setState(() {
+                      selectedUnit = newValue!;
+                      unitWeight = unitWeights[selectedUnit]!;
+                    });
+                  },
+                ),
+                SizedBox(height: 6),
+                TextField(
+                  controller: rateController,
+                  decoration: const InputDecoration(labelText: 'Rate'),
+                  keyboardType: TextInputType.number,
+                ),
+                SizedBox(height: 6),
+                TextField(
+                  controller: commodityController,
+                  decoration:
+                      const InputDecoration(labelText: 'Commodity Name'),
+                ),
+                SizedBox(height: 6),
+                TextField(
+                  controller: supplierController,
+                  decoration: const InputDecoration(labelText: 'Supplier Name'),
+                ),
+                SizedBox(height: 6),
+                TextField(
+                  controller: dateController,
+                  decoration:
+                      const InputDecoration(labelText: 'Transaction Date'),
+                  readOnly: true,
+                  onTap: () async {
+                    DateTime? pickedDate = await showDatePicker(
+                      context: context,
+                      initialDate: transaction.transactionDate!,
+                      firstDate: DateTime(2000),
+                      lastDate: DateTime(2101),
+                    );
+                    if (pickedDate != null) {
+                      dateController.text =
+                          DateFormat('dd-MM-yyyy').format(pickedDate);
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.pop(context);
+              },
+              child: const Text('Cancel'),
+            ),
+            TextButton(
+              onPressed: () {
+                double weight = NumberFormat('#,##0.00')
+                    .parse(weightController.text)
+                    .toDouble();
+                double rate = NumberFormat('#,##0.00')
+                    .parse(rateController.text)
+                    .toDouble();
+                double price = _calculateTotalPrice(weight, rate);
+
+                // Preserve the original time component
+                DateTime selectedDate =
+                    DateFormat('dd-MM-yyyy').parse(dateController.text);
+                DateTime updatedDate = DateTime(
+                  selectedDate.year,
+                  selectedDate.month,
+                  selectedDate.day,
+                  transaction.transactionDate!.hour,
+                  transaction.transactionDate!.minute,
+                  transaction.transactionDate!.second,
+                );
+
+                final updatedTransaction = transaction.copyWith(
+                  weight: weight,
+                  unit: selectedUnit,
+                  price: price,
+                  rate: rate,
+                  commodityName: commodityController.text,
+                  supplierName: supplierController.text,
+                  transactionDate:
+                      updatedDate, // Use the updated date with original time
+                );
+
+                ref.read(transactionProvider.notifier).updateTransaction(
+                    ref, transaction.id!, updatedTransaction);
+
+                Navigator.pop(context);
+              },
+              child: const Text('Save'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final transactions = ref.watch(transactionProvider);
     final searchQuery = _searchController.text;
+   
 
     final filteredTransactions = transactions.where((transaction) {
       final searchLower = searchQuery.toLowerCase();
@@ -139,13 +301,23 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
       final matchesDate = (startDate == null || endDate == null)
           ? true
           : transaction.transactionDate != null &&
-              transaction.transactionDate!
-                  .isAfter(startDate!.subtract(const Duration(days: 1))) &&
-              transaction.transactionDate!
-                  .isBefore(endDate!.add(const Duration(days: 1)));
+              !transaction.transactionDate!.isBefore(startDate!) &&
+              !transaction.transactionDate!.isAfter(endDate!
+                  .add(const Duration(days: 1))
+                  .subtract(const Duration(seconds: 1)));
 
-      return matchesQuery && matchesDate;
+
+      final matchesCondition = (selectedCondition == null || selectedCondition == 'All')
+          ? true
+          : transaction.commodityCondition?.toLowerCase() ==
+              selectedCondition?.toLowerCase();
+
+      return matchesQuery && matchesDate && matchesCondition;
     }).toList();
+
+    // Sort transactions by transactionDate in descending order
+    filteredTransactions
+        .sort((a, b) => b.transactionDate!.compareTo(a.transactionDate!));
 
     double totalPrice =
         filteredTransactions.fold(0, (sum, item) => sum + item.price);
@@ -165,12 +337,23 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Center(
-                      child: Text(
-                          'Error: Failed to load transaction, No internet connection, ensure you are connected',
-                          style: const TextStyle(color: Colors.red)),
+                    Row(
+                      mainAxisSize:
+                          MainAxisSize.min, // Center the content horizontally
+                      children: [
+                        const Icon(Icons.wifi_off, color: Colors.red),
+                        const SizedBox(
+                            width:
+                                6.0), // Add some spacing between icon and text
+                        Flexible(
+                          child: Text(
+                            'Unable to load transaction. Please check your internet connection and try again.',
+                            style: const TextStyle(color: Colors.red),
+                          ),
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 10),
+                    const SizedBox(height: 8),
                     ElevatedButton(
                       onPressed: fetchTransactions,
                       child: const Text('Retry'),
@@ -212,41 +395,73 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                           },
                         ),
                         const SizedBox(height: 2),
-                        GestureDetector(
-                          onTap: () => _selectDateRange(context),
-                          child: Container(
-                            padding: const EdgeInsets.all(10.0),
-                            decoration: BoxDecoration(
-                              color: Colors.grey[200],
-                              borderRadius: BorderRadius.circular(8.0),
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(
-                                  startDate == null && endDate == null
-                                      ? 'Filter by Date Range'
-                                      : 'Selected Dates: ${DateFormat('yyyy-MM-dd').format(startDate!)} - ${DateFormat('yyyy-MM-dd').format(endDate!)}',
-                                  style: const TextStyle(fontSize: 12),
-                                ),
-                                Row(
-                                  children: [
-                                    if (startDate != null && endDate != null)
-                                      IconButton(
-                                        icon: const Icon(Icons.clear),
-                                        onPressed: _clearDateRange,
+                        Row(
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: GestureDetector(
+                                onTap: () => _selectDateRange(context),
+                                child: Container(
+                                  padding: const EdgeInsets.all(4.0),
+                                  decoration: BoxDecoration(
+                                    color: Colors.grey[200],
+                                    borderRadius: BorderRadius.circular(1.0),
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceBetween,
+                                    children: [
+                                      Text(
+                                        startDate == null && endDate == null
+                                            ? 'Filter by Date Range'
+                                            : 'Dates: ${DateFormat('dd-MM-yyyy').format(startDate!)} - ${DateFormat('dd-MM-yyyy').format(endDate!)}',
+                                        style: const TextStyle(fontSize: 12),
                                       ),
-                                    const Icon(
-                                      Icons.calendar_today,
-                                      color: Colors.deepPurple,
-                                    ),
-                                  ],
+                                      Row(
+                                        children: [
+                                          if (startDate != null &&
+                                              endDate != null)
+                                            IconButton(
+                                              icon: const Icon(Icons.clear),
+                                              onPressed: _clearDateRange,
+                                            ),
+                                          const Icon(Icons.calendar_today,
+                                              color: Colors.deepPurple),
+                                        ],
+                                      ),
+                                    ],
+                                  ),
                                 ),
-                              ],
+                              ),
                             ),
-                          ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              flex: 1,
+                              child: DropdownButtonFormField<String>(
+                                value: selectedCondition,
+                                decoration: const InputDecoration(
+                                  contentPadding: EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 6),
+                                  border: OutlineInputBorder(),
+                                ),
+                                hint: const Text('Condition',
+                                    style: TextStyle(fontSize: 12)),
+                                items: ['All','Wet', 'Dry'].map((String condition) {
+                                  return DropdownMenuItem<String>(
+                                    value: condition,
+                                    child: Text(condition),
+                                  );
+                                }).toList(),
+                                onChanged: (value) {
+                                  setState(() {
+                                    selectedCondition = value;
+                                  });
+                                },
+                              ),
+                            ),
+                          ],
                         ),
-                        const SizedBox(height: 10),
+                        const SizedBox(height: 40),
                         filteredTransactions.isEmpty
                             ? Center(
                                 child: Text(
@@ -325,18 +540,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                                             const SizedBox(
                                                                 height: 4),
                                                             Text(
-                                                              'Commodity: ${transaction.commodityName}',
-                                                              style:
-                                                                  const TextStyle(
-                                                                fontSize: 12,
-                                                                color: Colors
-                                                                    .black,
-                                                              ),
-                                                            ),
-                                                            const SizedBox(
-                                                                height: 4),
-                                                            Text(
-                                                              'User: ${transaction.userName}',
+                                                              'Sales Rep: ${transaction.userName}',
                                                               style:
                                                                   const TextStyle(
                                                                 fontSize: 12,
@@ -357,10 +561,20 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                                                     context,
                                                                     transaction
                                                                         .id!);
+                                                              } else if (value ==
+                                                                  'edit') {
+                                                                _editTransaction(
+                                                                    context,
+                                                                    transaction);
                                                               }
                                                             },
                                                             itemBuilder:
                                                                 (context) => [
+                                                              const PopupMenuItem(
+                                                                value: 'edit',
+                                                                child: Text(
+                                                                    'Edit'),
+                                                              ),
                                                               const PopupMenuItem(
                                                                 value: 'delete',
                                                                 child: Text(
@@ -372,7 +586,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                                     ),
                                                     const SizedBox(height: 2),
                                                     Text(
-                                                      'Date: ${DateFormat('yyyy-MM-dd').format(transaction.transactionDate!)}',
+                                                      'Date: ${DateFormat('dd-MM-yyyy').format(transaction.transactionDate!)}',
                                                       style: const TextStyle(
                                                         fontSize: 12,
                                                         color: Colors.black,
@@ -380,9 +594,27 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                                     ),
                                                     const SizedBox(height: 2),
                                                     Text(
-                                                      'Time: ${DateFormat('hh:mm a').format(transaction.transactionDate!)}',
+                                                      // Adjust the date and time using the logic provided
+                                                      'Time: ${DateFormat('hh:mm a').format(transaction.transactionDate!.toLocal().add(Duration(hours: -transaction.transactionDate!.toLocal().timeZoneOffset.inHours)))}',
                                                       style: const TextStyle(
                                                         fontSize: 12,
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
+                                                    Text(
+                                                      'Commodity: ${transaction.commodityName}', // Assuming `commodity` exists in `transaction`
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        // Making it bold to stand out
+                                                        color: Colors.black,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 4),
+                                                    Text(
+                                                      'Commodity condition: ${transaction.commodityCondition}', // Assuming `commodity` exists in `transaction`
+                                                      style: const TextStyle(
+                                                        fontSize: 12,
+                                                        // Making it bold to stand out
                                                         color: Colors.black,
                                                       ),
                                                     ),
@@ -396,7 +628,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                                     ),
                                                     const SizedBox(height: 4),
                                                     Text(
-                                                      'Weight: ${NumberFormat('#,##0.00').format(transaction.weight)}',
+                                                      'Weight: ${NumberFormat('#,##0.00').format(transaction.weight)} kg',
                                                       style: const TextStyle(
                                                         fontSize: 12,
                                                         color: Colors.black,
@@ -424,42 +656,50 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                 ),
                               ),
                         const Divider(
-                            height: 10, thickness: 0.05, color: Colors.grey),
+                            height: 5, thickness: 0.05, color: Colors.grey),
                         Column(
                           children: [
                             // ... other widgets
                             const Divider(
-                                height: 10,
+                                height: 1,
                                 thickness: 0.05,
                                 color: Colors.white),
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment
-                                  .start, // Aligns both texts to the left
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment
+                                  .start, // Aligns the texts to the left
                               children: [
                                 Text(
-                                  'Amount: ${NumberFormat('#,##0.00').format(totalPrice)}',
+                                  'Total Weight: ${NumberFormat('#,##0.00').format(totalWeight)} kg',
                                   style: const TextStyle(
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.bold),
+                                    fontSize:
+                                        14, // Increased font size for the prefix
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                                const SizedBox(
-                                    width:
-                                        8), // Add some small space between the texts
+                                const SizedBox(height: 4),
                                 Text(
-                                  '( ${NumberFormat('#,##0.00').format(totalWeight)} kg)',
+                                  'Total Amount: ${NumberFormat('#,##0.00').format(totalPrice)}',
                                   style: const TextStyle(
-                                      fontSize: 14,
-                                      fontWeight: FontWeight.bold),
+                                    fontSize:
+                                        14, // Increased font size for the prefix
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                // Add small vertical spacing between the texts
+
+                                const SizedBox(
+                                    height:
+                                        4), // Add small vertical spacing between the texts
+                                Text(
+                                  'Total Transactions: ${filteredTransactions.length}',
+                                  style: const TextStyle(
+                                    fontSize:
+                                        14, // Increased font size for the prefix
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ],
                             ),
-
-                            Text(
-                              'Transactions: ${filteredTransactions.length}',
-                              style: const TextStyle(
-                                  fontSize: 14, fontWeight: FontWeight.bold),
-                            ),
-                            const SizedBox(height: 8),
                           ],
                         ),
                         const SizedBox(height: 8),

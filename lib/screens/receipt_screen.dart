@@ -51,34 +51,32 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
       pw.Page(
         build: (pw.Context context) {
           return pw.Padding(
-            padding: const pw.EdgeInsets.all(20),
+            padding: const pw.EdgeInsets.all(16),
             child: pw.Column(
               crossAxisAlignment: pw.CrossAxisAlignment.start,
               children: [
-                pw.SizedBox(height: 20),
-
-                // Receipt Title
-                pw.Text(
-                  'Receipt',
-                  style: pw.TextStyle(
-                    fontSize: 20,
-                    fontWeight: pw.FontWeight.bold,
-                    color: PdfColors.deepPurple,
-                  ),
+                // Receipt Title Section
+                pw.Row(
+                  children: [
+                    pw.Text(
+                      'Receipt',
+                      style: pw.TextStyle(
+                        fontSize: 15,
+                        fontWeight: pw.FontWeight.bold,
+                        color: PdfColors.deepPurple,
+                      ),
+                    ),
+                  ],
                 ),
-                pw.Divider(thickness: 2),
-                pw.SizedBox(height: 10),
+                pw.SizedBox(height: 16),
 
                 // Company Information Section
                 pw.Container(
-                  padding: const pw.EdgeInsets.all(15),
+                  padding: const pw.EdgeInsets.all(12),
                   decoration: pw.BoxDecoration(
-                    color: PdfColors
-                        .grey100, // Light grey background for a soft look
+                    borderRadius: pw.BorderRadius.circular(8),
                     border:
-                        pw.Border.all(color: PdfColors.deepPurple, width: 1.5),
-                    borderRadius: pw.BorderRadius.circular(
-                        12), // Slightly rounder corners
+                        pw.Border.all(color: PdfColors.deepPurple, width: 0.4),
                   ),
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -86,59 +84,29 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
                       pw.Text(
                         'Company Information',
                         style: pw.TextStyle(
-                          fontSize: 22, // Larger font size for prominence
+                          fontSize: 14,
                           fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.deepPurple,
-                          letterSpacing:
-                              0.5, // Adding some letter spacing for clarity
                         ),
                       ),
-                      pw.SizedBox(
-                          height:
-                              10), // Adding space between the title and content
-                      _buildTransactionDetailRow(
-                        'Company Name:',
-                        companyInfo.name,
-                        textStyle:
-                            pw.TextStyle(fontSize: 14, color: PdfColors.black),
-                      ),
-                      _buildTransactionDetailRow(
-                        'Address:',
-                        companyInfo.address,
-                        textStyle:
-                            pw.TextStyle(fontSize: 14, color: PdfColors.black),
-                      ),
-                      _buildTransactionDetailRow(
-                        'Phone:',
-                        companyInfo.phone,
-                        textStyle:
-                            pw.TextStyle(fontSize: 14, color: PdfColors.black),
-                      ),
-                      _buildTransactionDetailRow(
-                        'Email:',
-                        companyInfo.email,
-                        textStyle:
-                            pw.TextStyle(fontSize: 14, color: PdfColors.black),
-                      ),
-                      pw.SizedBox(height: 15),
-                      pw.Divider(color: PdfColors.deepPurple, thickness: 1.5),
+                      pw.Divider(thickness: 0.4, color: PdfColors.deepPurple),
+                      pw.SizedBox(height: 6),
+                      _buildCompanyInfoRowForPDF('Name:', companyInfo.name),
+                      _buildCompanyInfoRowForPDF(
+                          'Address:', companyInfo.address),
+                      _buildCompanyInfoRowForPDF('Phone:', companyInfo.phone),
+                      _buildCompanyInfoRowForPDF('Email:', companyInfo.email),
                     ],
                   ),
                 ),
-                pw.SizedBox(height: 20),
+                pw.SizedBox(height: 16),
 
                 // Transaction Details Section
                 pw.Container(
-                  padding: const pw.EdgeInsets.all(
-                      15), // Increased padding for better spacing
+                  padding: const pw.EdgeInsets.all(12),
                   decoration: pw.BoxDecoration(
-                    color: PdfColors
-                        .grey200, // Light grey background for subtle contrast
-                    border: pw.Border.all(
-                        color: PdfColors.orangeAccent,
-                        width: 1.5), // Thicker border for prominence
-                    borderRadius: pw.BorderRadius.circular(
-                        10), // More rounded corners for a modern look
+                    borderRadius: pw.BorderRadius.circular(8),
+                    border:
+                        pw.Border.all(color: PdfColors.deepPurple, width: 0.4),
                   ),
                   child: pw.Column(
                     crossAxisAlignment: pw.CrossAxisAlignment.start,
@@ -146,102 +114,61 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
                       pw.Text(
                         'Transaction Details',
                         style: pw.TextStyle(
-                          fontSize: 22, // Larger font for emphasis
+                          fontSize: 14,
                           fontWeight: pw.FontWeight.bold,
-                          color: PdfColors.orangeAccent,
-                          letterSpacing:
-                              0.8, // Improved spacing between letters for readability
                         ),
                       ),
-                      pw.SizedBox(
-                          height:
-                              12), // Increased space between title and content
+                      pw.Divider(thickness: 0.4, color: PdfColors.deepPurple),
                       _buildTransactionDetailRow(
-                        'Commodity:',
-                        widget.transaction.commodityName,
-                        textStyle:
-                            pw.TextStyle(fontSize: 14, color: PdfColors.black),
-                      ),
+                          'Receipt ID:', widget.transaction.id ?? 'N/A'),
                       _buildTransactionDetailRow(
-                        'Supplier:',
-                        widget.transaction.supplierName,
-                        textStyle:
-                            pw.TextStyle(fontSize: 14, color: PdfColors.black),
-                      ),
+                          'Supplier:', widget.transaction.supplierName!),
                       _buildTransactionDetailRow(
-                        'Paid by:',
-                        widget.transaction.userName ?? 'Unknown',
-                        textStyle:
-                            pw.TextStyle(fontSize: 14, color: PdfColors.black),
-                      ),
+                          'Commodity:', widget.transaction.commodityName!),
                       _buildTransactionDetailRow(
                         'Weight:',
-                        '${widget.transaction.weight} kg',
-                        textStyle:
-                            pw.TextStyle(fontSize: 14, color: PdfColors.black),
+                        '${NumberFormat('#,##0.00').format(widget.transaction.weight)} kg',
                       ),
                       _buildTransactionDetailRow(
-                        'Price:',
-                        '\$${widget.transaction.price.toStringAsFixed(2)}',
-                        textStyle:
-                            pw.TextStyle(fontSize: 14, color: PdfColors.black),
+                        'Amount:',
+                        '${NumberFormat('#,##0.00').format(widget.transaction.price)}',
                       ),
                       _buildTransactionDetailRow(
                         'Date:',
-                        DateFormat('yyyy-MM-dd')
+                        DateFormat('dd-MM-yyyy')
                             .format(widget.transaction.transactionDate!),
-                        textStyle:
-                            pw.TextStyle(fontSize: 14, color: PdfColors.black),
                       ),
                       _buildTransactionDetailRow(
                         'Time:',
-                        DateFormat('HH:mm:ss')
+                        DateFormat('hh:mm:ss a')
                             .format(widget.transaction.transactionDate!),
-                        textStyle:
-                            pw.TextStyle(fontSize: 14, color: PdfColors.black),
                       ),
-                      pw.SizedBox(
-                          height: 12), // Space after details for better layout
-                      pw.Divider(
-                          color: PdfColors.orangeAccent,
-                          thickness: 1.5), // Divider with more prominence
                     ],
                   ),
                 ),
-                pw.SizedBox(height: 20),
+                pw.SizedBox(height: 16),
 
-                // Footer Section: Thank You Note
+                // Footer: Thank You Note
                 pw.Center(
                   child: pw.Column(
                     children: [
-                      pw.Divider(thickness: 1.5, color: PdfColors.grey),
                       pw.Text(
                         'Thank you for doing business with us!',
                         style: pw.TextStyle(
-                          fontSize: 16,
+                          fontSize: 14,
                           fontStyle: pw.FontStyle.italic,
-                          color: PdfColors.black,
+                          color: PdfColors.grey700,
                         ),
                       ),
-                      pw.Container(
-                        padding: pw.EdgeInsets.all(8.0),
-                        decoration: pw.BoxDecoration(
-                          color: PdfColors.grey200, // Light grey background
-                          borderRadius:
-                              pw.BorderRadius.all(pw.Radius.circular(5)),
+                      pw.SizedBox(height: 8),
+                      pw.Text(
+                        'Designed by Mattwolkins Global Enterprises (09073699985,08064523813)',
+                        style: pw.TextStyle(
+                          fontSize: 12,
+                          fontStyle: pw.FontStyle.normal,
+                          color: PdfColors.grey600,
                         ),
-                        child: pw.Text(
-                          'Created and developed by Mattwolkins Technologies\n'
-                          'For inquiries, contact us at: 08064523813 or 09073699985',
-                          style: pw.TextStyle(
-                            fontSize: 12,
-                            color: PdfColors.black,
-                            fontWeight: pw.FontWeight.normal,
-                            letterSpacing: 0.5,
-                          ),
-                          textAlign: pw.TextAlign.center,
-                        ),
-                      )
+                      ),
                     ],
                   ),
                 ),
@@ -258,30 +185,52 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
   }
 
   // Helper method to build transaction details rows
-  pw.Widget _buildTransactionDetailRow(String label, String value,
-      {pw.TextStyle? textStyle}) {
-    return pw.Row(
-      crossAxisAlignment: pw.CrossAxisAlignment.start,
-      children: [
-        pw.Text(
-          '$label ',
-          style: pw.TextStyle(
-            fontWeight: pw.FontWeight.bold,
-            fontSize: 14,
-            color: PdfColors.black,
+  pw.Widget _buildTransactionDetailRow(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 8.0),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            '$label ',
+            style: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 12,
+            ),
           ),
-        ),
-        pw.Expanded(
-          child: pw.Text(
-            value,
-            style: textStyle ??
-                pw.TextStyle(
-                  fontSize: 14,
-                  color: PdfColors.black,
-                ),
+          pw.Expanded(
+            child: pw.Text(
+              value,
+              style: pw.TextStyle(fontSize: 12),
+            ),
           ),
-        ),
-      ],
+        ],
+      ),
+    );
+  }
+
+  // Helper method to build company info row for PDF
+  pw.Widget _buildCompanyInfoRowForPDF(String label, String value) {
+    return pw.Padding(
+      padding: const pw.EdgeInsets.symmetric(vertical: 8.0),
+      child: pw.Row(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            '$label ',
+            style: pw.TextStyle(
+              fontWeight: pw.FontWeight.bold,
+              fontSize: 12,
+            ),
+          ),
+          pw.Expanded(
+            child: pw.Text(
+              value,
+              style: pw.TextStyle(fontSize: 12),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -298,73 +247,117 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
               children: [
                 // Header with company logo or title
                 pw.Container(
-                  padding: pw.EdgeInsets.all(8),
+                  padding: pw.EdgeInsets.all(16),
                   decoration: pw.BoxDecoration(
                     color: PdfColors.blueGrey, // Professional blue-gray header
-                    borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
+                    borderRadius: pw.BorderRadius.all(pw.Radius.circular(12)),
                   ),
-                  child: pw.Text(
-                    'Receipt',
-                    style: pw.TextStyle(
-                      fontSize: 28,
-                      fontWeight: pw.FontWeight.bold,
-                      color: PdfColors.white,
-                    ),
-                  ),
-                ),
-                pw.SizedBox(height: 16),
+                  child: pw.Row(
+                    children: [
+                      // Optionally add a company logo here
 
-                // Company info
-                pw.Text(
-                  'Company Name: ${companyInfo.name}',
-                  style: pw.TextStyle(fontSize: 14),
-                ),
-                pw.Text(
-                  'Address: ${companyInfo.address}',
-                  style: pw.TextStyle(fontSize: 14),
-                ),
-                pw.Text(
-                  'Phone: ${companyInfo.phone}',
-                  style: pw.TextStyle(fontSize: 14),
-                ),
-                pw.Text(
-                  'Email: ${companyInfo.email}',
-                  style: pw.TextStyle(fontSize: 14),
+                      pw.SizedBox(width: 10),
+                      pw.Text(
+                        'Receipt',
+                        style: pw.TextStyle(
+                          fontSize: 30,
+                          fontWeight: pw.FontWeight.bold,
+                          color: PdfColors.white,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 pw.SizedBox(height: 20),
 
-                // Transaction details section
+                // Company Info Section
                 pw.Text(
-                  'Transaction Details:',
+                  'Company: ${companyInfo.name}',
+                  style: pw.TextStyle(
+                    fontSize: 14,
+                    fontWeight: pw.FontWeight.bold,
+                  ),
+                ),
+                pw.Text(
+                  'Address: ${companyInfo.address}',
+                  style: pw.TextStyle(fontSize: 12),
+                ),
+                pw.Text(
+                  'Phone: ${companyInfo.phone}',
+                  style: pw.TextStyle(fontSize: 12),
+                ),
+                pw.Text(
+                  'Email: ${companyInfo.email}',
+                  style: pw.TextStyle(fontSize: 12),
+                ),
+                pw.SizedBox(height: 20),
+
+                // Transaction Details Section with Table
+                pw.Text(
+                  'Transaction Details',
                   style: pw.TextStyle(
                     fontSize: 16,
                     fontWeight: pw.FontWeight.bold,
                     color: PdfColors.black,
                   ),
                 ),
-                pw.SizedBox(height: 8),
-                pw.Container(
-                  padding: pw.EdgeInsets.all(8),
-                  decoration: pw.BoxDecoration(
-                    border: pw.Border.all(color: PdfColors.grey),
-                    borderRadius: pw.BorderRadius.all(pw.Radius.circular(8)),
-                  ),
-                  child: pw.Column(
-                    crossAxisAlignment: pw.CrossAxisAlignment.start,
-                    children: [
-                      pw.Text('Commodity: ${widget.transaction.commodityName}',
-                          style: pw.TextStyle(fontSize: 14)),
-                      pw.Text('Supplier: ${widget.transaction.supplierName}',
-                          style: pw.TextStyle(fontSize: 14)),
-                      pw.Text('Weight: ${widget.transaction.weight} kg',
-                          style: pw.TextStyle(fontSize: 14)),
-                      pw.Text(
-                          'Price: \$${widget.transaction.price.toStringAsFixed(2)}',
-                          style: pw.TextStyle(fontSize: 14)),
-                      pw.Text(
-                          'Date: ${DateFormat('yyyy-MM-dd').format(widget.transaction.transactionDate!)}',
-                          style: pw.TextStyle(fontSize: 14)),
+                pw.SizedBox(height: 10),
+                pw.Table.fromTextArray(
+                  border: pw.TableBorder.all(color: PdfColors.grey),
+                  cellAlignment: pw.Alignment.centerLeft,
+                  headers: [
+                    'Receipt ID',
+                    'Supplier',
+                    'Weight (kg)',
+                    'Amount',
+                    'Date',
+                  ],
+                  data: [
+                    [
+                      widget.transaction.id ?? 'N/A',
+                      widget.transaction.supplierName,
+                      widget.transaction.weight,
+                      widget.transaction.commodityName,
+                      widget.transaction.price.toStringAsFixed(2),
+                      DateFormat('yyyy-MM-dd')
+                          .format(widget.transaction.transactionDate!),
                     ],
+                  ],
+                  headerStyle: pw.TextStyle(
+                    fontSize: 12,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.white,
+                  ),
+                  headerDecoration: pw.BoxDecoration(
+                    color: PdfColors.blueGrey,
+                  ),
+                  cellStyle: pw.TextStyle(fontSize: 12),
+                ),
+
+                pw.SizedBox(height: 20),
+
+                // Footer Section
+                pw.Divider(color: PdfColors.grey),
+                pw.SizedBox(height: 8),
+                pw.Center(
+                  child: pw.Text(
+                    'Thank you for your business!',
+                    style: pw.TextStyle(
+                      fontSize: 14,
+                      fontStyle: pw.FontStyle.italic,
+                      color: PdfColors.grey700,
+                    ),
+                  ),
+                ),
+                pw.SizedBox(height: 8),
+                pw.Center(
+                  child: pw.Text(
+                    'Designed by Mattwolkins Global Enterprises (09073699985,08064523813)',
+                    style: pw.TextStyle(
+                      fontSize: 12,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.yellow, // Set the color to yellow
+                    ),
                   ),
                 ),
               ],
@@ -443,7 +436,7 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
                       Text(
                         'Receipt',
                         style: TextStyle(
-                          fontSize: 24,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: Colors.deepPurple,
                         ),
@@ -463,9 +456,9 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Text(
-                            'Company Info',
+                            'Company Information',
                             style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
+                                fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                           const Divider(
                               thickness: 0.4, color: Colors.deepPurple),
@@ -497,23 +490,30 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
                           const Text(
                             'Transaction Details',
                             style: TextStyle(
-                                fontSize: 16, fontWeight: FontWeight.bold),
+                                fontSize: 14, fontWeight: FontWeight.bold),
                           ),
                           const Divider(
                               thickness: 0.4, color: Colors.deepPurple),
-                          const SizedBox(height: 6),
-                          _buildTransactionInfoRow(Icons.shopping_bag,
-                              'Commodity:', widget.transaction.commodityName),
+                          _buildTransactionInfoRow(Icons.receipt, 'Receipt ID:',
+                              widget.transaction.id ?? 'N/A'),
                           _buildTransactionInfoRow(Icons.person, 'Supplier:',
-                              widget.transaction.supplierName),
-                          _buildTransactionInfoRow(Icons.scale, 'Weight:',
-                              '${widget.transaction.weight} kg'),
-                          _buildTransactionInfoRow(Icons.attach_money, 'Price:',
-                              '${widget.transaction.price.toStringAsFixed(2)}'),
+                              widget.transaction.supplierName!),
+                          _buildTransactionInfoRow(Icons.person, 'Commodity:',
+                              widget.transaction.commodityName!),
+                          _buildTransactionInfoRow(
+                            Icons.scale,
+                            'Weight:',
+                            '${NumberFormat('#,##0.00').format(widget.transaction.weight)} kg',
+                          ),
+                          _buildTransactionInfoRow(
+                            Icons.attach_money,
+                            'Amount:',
+                            '${NumberFormat('#,##0.00').format(widget.transaction.price)}',
+                          ),
                           _buildTransactionInfoRow(
                               Icons.date_range,
                               'Date:',
-                              DateFormat('yyyy-MM-dd')
+                              DateFormat('dd-MM-yyyy')
                                   .format(widget.transaction.transactionDate!)),
                           _buildTransactionInfoRow(
                               Icons.access_time,
@@ -556,13 +556,13 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
           const SizedBox(width: 12),
           Text(label,
               style:
-                  const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                  const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
           const SizedBox(width: 5),
           Expanded(
             // Ensure the text takes up available space
             child: Text(
               value,
-              style: const TextStyle(fontSize: 18),
+              style: const TextStyle(fontSize: 12),
               overflow: TextOverflow.ellipsis, // Adds ellipsis for long text
               softWrap:
                   true, // Automatically wraps text when it exceeds available space
@@ -573,7 +573,7 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
     );
   }
 
-// For company information, use a similar approach
+  // For company information, use a similar approach
   Widget _buildCompanyInfoRow(IconData icon, String label, String value) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 8.0),
@@ -585,7 +585,7 @@ class _ReceiptScreenState extends ConsumerState<ReceiptScreen> {
           Expanded(
             child: RichText(
               text: TextSpan(
-                style: const TextStyle(fontSize: 18, color: Colors.black),
+                style: const TextStyle(fontSize: 12, color: Colors.black),
                 children: [
                   TextSpan(
                     text: '$label ',

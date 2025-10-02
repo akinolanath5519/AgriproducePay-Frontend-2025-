@@ -86,7 +86,7 @@ class TransactionService {
 
     try {
       final response = await http.post(
-        Uri.parse('${Config.baseUrl}/transaction'),
+        Uri.parse('${Config.baseUrl}/transactions/transaction'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -114,52 +114,63 @@ class TransactionService {
     }
   }
 
-  // Method to get all transactions
-  Future<List<Transaction>> getTransactions(WidgetRef ref) async {
+  
+
+
+Future<List<Transaction>> getTransactions(WidgetRef ref) async {
   final token = ref.read(tokenProvider);
   if (token == null) {
     throw Exception('User not authenticated');
   }
 
-  // Check for internet connection
   final isConnected = await _isConnectedToInternet();
   if (!isConnected) {
     print('No internet connection. Returning cached transactions.');
-    // Return local transactions if no internet connection
-    return getAllTransactions();
+    return getAllTransactions(); // fallback to local cache
   }
 
   try {
     final response = await http.get(
-      Uri.parse('${Config.baseUrl}/transaction'),
+      Uri.parse('${Config.baseUrl}/transactions/transaction'),
       headers: {
         'Authorization': 'Bearer $token',
       },
     );
 
     if (response.statusCode == 200) {
-      // Decode the response body directly into a list
-      final List<dynamic> transactionList = jsonDecode(response.body);
-      
-      final transactions = transactionList.map<Transaction>((json) {
+      final decoded = jsonDecode(response.body);
+
+      // Ensure we got a list from the backend
+      if (decoded is! List) {
+        throw Exception("Expected a list of transactions, got: $decoded");
+      }
+
+      // Map JSON -> Transaction model
+      final transactions = decoded.map<Transaction>((item) {
+        final Map<String, dynamic> json = item as Map<String, dynamic>;
+
         var transaction = Transaction.fromJson(json);
+
+        // Handle included user info (if you added include: { user } in Prisma)
         if (json['user'] != null) {
           transaction.userName = json['user']['name'] ?? 'Unknown User';
         }
+
         return transaction;
       }).toList();
 
       return transactions;
     } else {
-      print('Error fetching transactions from server: ${response.statusCode} - ${response.body}');
+      print(
+          'Error fetching transactions from server: ${response.statusCode} - ${response.body}');
       throw Exception('Failed to load transactions: ${response.body}');
     }
   } catch (e) {
     print('Error fetching transactions from server: $e');
-    // Fallback to local data in case of error (e.g., no internet connection)
-    return getAllTransactions();
+    return getAllTransactions(); // fallback to local cache
   }
 }
+
 
   // Method to update a transaction
   Future<void> updateTransaction(
@@ -176,7 +187,7 @@ class TransactionService {
 
     try {
       final response = await http.put(
-        Uri.parse('${Config.baseUrl}/transaction/$transactionId'),
+        Uri.parse('${Config.baseUrl}/transactions/transaction/$transactionId'),
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
@@ -209,7 +220,7 @@ class TransactionService {
 
     try {
       final response = await http.delete(
-        Uri.parse('${Config.baseUrl}/transaction/$transactionId'),
+        Uri.parse('${Config.baseUrl}/transactions/transaction/$transactionId'),
         headers: {
           'Authorization': 'Bearer $token',
         },
@@ -224,5 +235,39 @@ class TransactionService {
       print('Error deleting transaction remotely: $e');
       throw Exception('Error deleting transaction: $e');
     }
+  }
+}
+
+
+Future<void> updateTransaction(
+    WidgetRef ref, String transactionId, Transaction transaction) async {
+  // Save locally first
+ 
+  print(
+      'Attempting to update transaction remotely with id: $transactionId - ${transaction.toJson()}');
+
+  final token = ref.read(tokenProvider);
+  if (token == null) {
+    throw Exception('User not authenticated');
+  }
+
+  try {
+    final response = await http.put(
+      Uri.parse('${Config.baseUrl}/transactions/transaction/$transactionId'),
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      },
+      body: jsonEncode(transaction.toJson()), // Use the Transaction's toJson method
+    );
+
+    if (response.statusCode != 200) {
+      print(
+          'Failed to update transaction remotely: ${response.statusCode} - ${response.body}');
+      throw Exception('Failed to update transaction: ${response.body}');
+    }
+  } catch (e) {
+    print('Error updating transaction remotely: $e');
+    throw Exception('Error updating transaction: $e');
   }
 }

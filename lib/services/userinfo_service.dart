@@ -1,148 +1,106 @@
 import 'dart:convert';
 import 'package:agriproduce/constant/appLogger.dart';
 import 'package:agriproduce/constant/httpError.dart';
-import 'package:agriproduce/constant/config.dart';
 import 'package:agriproduce/data_models/userinfo_model.dart';
-import 'package:agriproduce/state_management/token_provider.dart';
+import 'package:agriproduce/utilis/api_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:http/http.dart' as http;
 
-// Local user service for caching
+/// ---------------- LOCAL USER CACHE ----------------
 class LocalUserService {
-  // Save a user locally
-  void saveUser(User user) {
-    AppLogger.logInfo('User saved locally: ${user.toJson()}');
-  }
+  void saveUser(User user) =>
+      AppLogger.logInfo('💾 Saved user locally: ${user.toJson()}');
 
-  // Retrieve all users
   List<User> getAllUsers() {
+    AppLogger.logInfo('📦 Returning cached users (currently empty)');
     return [];
   }
 
-  // Check if user data is cached
-  bool isDataCached() {
-    return false;
-  }
+  bool isDataCached() => false;
 
-  // Delete a user
-  void deleteUser(String id) {
-    AppLogger.logInfo('User deleted locally with id: $id');
-  }
+  void deleteUser(String id) =>
+      AppLogger.logInfo('🗑 Deleted user locally: $id');
 }
 
-// Remote user service
+/// ---------------- REMOTE USER SERVICE ----------------
 class UserListService {
   final LocalUserService localService = LocalUserService();
 
-  // Fetch all users
-  Future<List<User>> getUsers(WidgetRef ref) async {
-    final token = ref.read(tokenProvider);
-    if (token == null) {
-      AppLogger.logError('Token is null, cannot fetch users');
-      throw Exception('User not authenticated');
-    }
-
+  /// Fetch admin + associated users
+  Future<Map<String, dynamic>?> getUsers(WidgetRef ref) async {
     if (localService.isDataCached()) {
-      AppLogger.logInfo('Fetching users from local cache');
-      return localService.getAllUsers();
+      AppLogger.logInfo('📦 Loaded users from cache');
+      return {
+        "admin": null,
+        "associatedUsers": localService.getAllUsers(),
+      };
     }
 
     try {
-      AppLogger.logInfo('Fetching users from server...');
-      final response = await http.get(
-        Uri.parse('${Config.baseUrl}/users'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await apiGet(ref, '/auth/get/adminanduser', json: false);
+      if (response.body.isEmpty) return null;
 
-      HttpErrorHandler.handleResponse(response, 'fetch users');
+      final responseData = jsonDecode(response.body);
 
-      if (response.body.isEmpty) {
-        return [];
-      }
+      // Parse admin
+      final adminData = responseData['admin'];
+      final admin = adminData != null ? User.fromJson(adminData) : null;
 
-      try {
-        final Map<String, dynamic> jsonResponse = jsonDecode(response.body);
+      // Parse users
+      final usersJson = responseData['associatedUsers'] as List<dynamic>;
+      final users = usersJson.map((u) => User.fromJson(u)).toList();
 
-        if (jsonResponse.containsKey('associatedUsers')) {
-          final List<dynamic> userList = jsonResponse['associatedUsers'];
-          List<User> users =
-              userList.map<User>((json) => User.fromJson(json)).toList();
+      users.forEach(localService.saveUser);
 
-          // Save users locally for caching
-          for (var user in users) {
-            localService.saveUser(user);
-          }
-
-          AppLogger.logInfo('Users fetched and cached successfully');
-          return users;
-        } else {
-          AppLogger.logError('Unexpected JSON structure: $jsonResponse');
-          throw Exception('Unexpected JSON structure');
-        }
-      } catch (e, stackTrace) {
-        HttpErrorHandler.handleJsonDecodingError('decode users', e);
-        AppLogger.logError('Error decoding JSON for users', e, stackTrace);
-      }
+      AppLogger.logInfo('✅ Admin + users fetched successfully');
+      return {"admin": admin, "associatedUsers": users};
     } catch (e, stackTrace) {
-      AppLogger.logError('Error fetching users from server: $e', e, stackTrace);
+      HttpErrorHandler.handleJsonDecodingError('decode users', e);
+      AppLogger.logError('❌ Error fetching users: $e', e, stackTrace);
+      return null;
     }
-
-    // Fallback to local cache
-    AppLogger.logInfo('Returning users from local cache due to error');
-    return localService.getAllUsers();
   }
 
-  // Update user
+  /// Update user
   Future<void> updateUser(WidgetRef ref, String userId, User user) async {
     localService.saveUser(user);
-    AppLogger.logInfo('Attempting to update user remotely with id: $userId');
-
-    final token = ref.read(tokenProvider);
-    if (token == null) {
-      AppLogger.logError('Token is null, user not authenticated');
-      throw Exception('User not authenticated');
-    }
-
     try {
-      final response = await http.put(
-        Uri.parse('${Config.baseUrl}/users/$userId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(user.toJson()),
-      );
-
-      HttpErrorHandler.handleResponse(response, 'update user');
+      await apiPut(ref, '/users/$userId', user.toJson());
     } catch (e, stackTrace) {
-      AppLogger.logError('Error updating user remotely: $e', e, stackTrace);
+      AppLogger.logError('❌ Failed to update user: $e', e, stackTrace);
     }
   }
 
-  // Delete user
-  Future<void> deleteUser(WidgetRef ref, String userId) async {
+  /// Delete standard user
+  Future<void> deleteStandardUser(WidgetRef ref, String userId) async {
     localService.deleteUser(userId);
-    AppLogger.logInfo('Attempting to delete user remotely with id: $userId');
-
-    final token = ref.read(tokenProvider);
-    if (token == null) {
-      AppLogger.logError('Token is null, user not authenticated');
-      throw Exception('User not authenticated');
-    }
-
     try {
-      final response = await http.delete(
-        Uri.parse('${Config.baseUrl}/users/$userId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      HttpErrorHandler.handleResponse(response, 'delete user');
+      await apiDelete(ref, '/auth/delete/standarduser/$userId');
+      AppLogger.logInfo('✅ Standard user deleted from server');
     } catch (e, stackTrace) {
-      AppLogger.logError('Error deleting user remotely: $e', e, stackTrace);
+      AppLogger.logError('❌ Failed to delete user: $e', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Block user
+  Future<void> blockUser(WidgetRef ref, String userId) async {
+    try {
+      await apiPatch(ref, '/auth/users/block/$userId', {});
+      AppLogger.logInfo('✅ User blocked successfully');
+    } catch (e, stackTrace) {
+      AppLogger.logError('❌ Failed to block user: $e', e, stackTrace);
+      rethrow;
+    }
+  }
+
+  /// Unblock user
+  Future<void> unblockUser(WidgetRef ref, String userId) async {
+    try {
+      await apiPatch(ref, '/auth/users/unblock/$userId', {});
+      AppLogger.logInfo('✅ User unblocked successfully');
+    } catch (e, stackTrace) {
+      AppLogger.logError('❌ Failed to unblock user: $e', e, stackTrace);
+      rethrow;
     }
   }
 }

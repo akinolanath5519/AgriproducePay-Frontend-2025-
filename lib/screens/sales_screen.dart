@@ -95,10 +95,20 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                   // Get the last entry to display cumulative values
                   final lastEntry = transactionWeights.last;
 
-                  // Format the date and time
-                  final formattedDate = DateFormat('yyyy-MM-dd – hh:mm a')
-                      .format(lastEntry.createdAt);
+                  // Calculate total bags and weight for this transaction
+                  transactionWeights.fold(
+                      0, (sum, item) => sum + item.bags.toInt());
+                  transactionWeights.fold(
+                      0.0, (sum, item) => sum + item.weight);
 
+                  final localCreatedAt = lastEntry.createdAt.toLocal();
+
+                  final int timeOffset = localCreatedAt.timeZoneOffset.inHours;
+
+                  final adjustedDate =
+                      localCreatedAt.add(Duration(hours: -timeOffset));
+                  final formattedDate =
+                      DateFormat('dd-MM-yyyy – hh:mm a').format(adjustedDate);
                   return GestureDetector(
                       onLongPress: () {
                         _showOptionsDialog(
@@ -133,47 +143,75 @@ class _SalesScreenState extends ConsumerState<SalesScreen> {
                         child: Padding(
                           padding: const EdgeInsets.all(
                               16), // Added padding inside the card
-                          child: ListTile(
-                            contentPadding: EdgeInsets
-                                .zero, // Removes the default padding from ListTile
-                            title: Text(
-                              '${index + 1}: Date: $formattedDate',
-                              style: TextStyle(
-                                fontWeight: FontWeight.bold,
-                                fontSize: 16,
-                                color: Colors
-                                    .deepPurple, // Highlight the title in a distinct color
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '${index + 1}: Date: $formattedDate',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 16,
+                                  color: Colors
+                                      .deepPurple, // Highlight the title in a distinct color
+                                ),
                               ),
-                            ),
-                            subtitle: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                SizedBox(
-                                    height:
-                                        8), // Increased spacing for better readability
-                                Text(
-                                  'Cumulative Bags: ${NumberFormat('#,##0').format(lastEntry.cumulativeBags)}',
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight
-                                        .w600, // Slightly bolder for emphasis
-                                    fontSize:
-                                        15, // Increased font size for better readability
+                              SizedBox(
+                                  height:
+                                      8), // Increased spacing for better readability
+                              Text(
+                                'Cumulative Bags: ${NumberFormat('#,##0').format(lastEntry.cumulativeBags)}',
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight
+                                      .w600, // Slightly bolder for emphasis
+                                  fontSize:
+                                      15, // Increased font size for better readability
+                                ),
+                              ),
+                              SizedBox(
+                                  height:
+                                      4), // Increased spacing between the two values
+                              Text(
+                                'Cumulative Weight: ${NumberFormat('#,##0.00').format(lastEntry.cumulativeWeight)} kg',
+                                style: TextStyle(
+                                  color: Colors.black87,
+                                  fontWeight: FontWeight.w600,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              // Add space before the button
+                              Align(
+                                alignment: Alignment.centerRight,
+                                child: TextButton(
+                                  onPressed: () {
+                                    Navigator.push(
+                                      context,
+                                      MaterialPageRoute(
+                                        builder: (context) =>
+                                            SalesDetailsScreen(
+                                          transactionId: transactionId,
+                                        ),
+                                      ),
+                                    ).then((_) {
+                                      // Refresh the data after returning from the SalesDetailsScreen
+                                      ref
+                                          .read(bulkWeightNotifierProvider
+                                              .notifier)
+                                          .fetchBulkWeights(ref);
+                                    });
+                                  },
+                                  child: Text(
+                                    'View Entries',
+                                    style: TextStyle(
+                                      color: Colors
+                                          .orangeAccent, // Color of the button text
+                                      fontWeight:
+                                          FontWeight.bold, // Make the text bold
+                                    ),
                                   ),
                                 ),
-                                SizedBox(
-                                    height:
-                                        4), // Increased spacing between the two values
-                                Text(
-                                  'Cumulative Weight: ${NumberFormat('#,##0.00').format(lastEntry.cumulativeWeight)} kg',
-                                  style: TextStyle(
-                                    color: Colors.black87,
-                                    fontWeight: FontWeight.w600,
-                                    fontSize: 15,
-                                  ),
-                                ),
-                              ],
-                            ),
+                              ),
+                            ],
                           ),
                         ),
                       ));
