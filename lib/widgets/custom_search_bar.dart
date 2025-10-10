@@ -1,3 +1,4 @@
+import 'package:agriproduce/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 
 class CustomSearchBar extends StatefulWidget {
@@ -36,7 +37,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
             boxShadow: _isFocused
                 ? [
                     BoxShadow(
-                      color: Colors.deepPurple.withOpacity(0.3),
+                      color: AppColors.primary.withOpacity(0.3),
                       blurRadius: 8.0,
                       offset: const Offset(0, 3),
                     ),
@@ -58,7 +59,7 @@ class _CustomSearchBarState extends State<CustomSearchBar> {
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12.0),
                 borderSide: const BorderSide(
-                  color: Colors.deepPurple,
+                  color: AppColors.primary,
                   width: 1.0,
                 ),
               ),

@@ -1,3 +1,4 @@
+import 'package:agriproduce/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:font_awesome_flutter/font_awesome_flutter.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -35,11 +36,11 @@ class CustomBottomNavigationBar extends StatelessWidget {
       ],
       currentIndex: selectedIndex,
       onTap: onItemTapped,
-      selectedItemColor: Colors.deepPurpleAccent,
+      selectedItemColor: AppColors.primary,
       unselectedItemColor: Colors.black54,
       selectedLabelStyle: GoogleFonts.poppins(
         fontSize: 14.0,
-        fontWeight: FontWeight.w700,
+        fontWeight: FontWeight.w500,
       ),
       unselectedLabelStyle: GoogleFonts.poppins(
         fontSize: 12.0,

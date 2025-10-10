@@ -1,54 +1,85 @@
-class SackRecord {
+class SackReturn {
   final String id;
-  final String supplierName;
-  final DateTime date; // Change to DateTime
-  final int bagsCollected;
+  final int collectionId;
   final int bagsReturned;
+  final String? proxyName;
+  final int supplierId;
+  final DateTime returnedAt;
 
-  SackRecord({
+  SackReturn({
     required this.id,
-    required this.supplierName,
-    required this.date, // Now accepting DateTime
-    required this.bagsCollected,
+    required this.collectionId,
     required this.bagsReturned,
+    this.proxyName,
+    required this.supplierId,
+    required this.returnedAt,
   });
 
-  int get bagsRemaining => bagsCollected - bagsReturned;
-
-  // Parsing the string date into DateTime during object creation
-  factory SackRecord.fromJson(Map<String, dynamic> json) {
-    return SackRecord(
-      id: (json['id'] ?? json['_id']).toString(), // Convert to String, fallback for MongoDB _id
-      supplierName: json['supplierName'],
-      date: DateTime.parse(json['date']), // Convert String to DateTime
-      bagsCollected: json['bagsCollected'],
-      bagsReturned: json['bagsReturned'],
+  factory SackReturn.fromJson(Map<String, dynamic> json) {
+    return SackReturn(
+      id: (json['id'] ?? 0).toString(),
+      collectionId: json['collectionId'] ?? 0,
+      bagsReturned: json['bagsReturned'] ?? 0,
+      proxyName: json['proxyName'],
+      supplierId: json['supplierId'] ?? 0,
+      returnedAt: DateTime.tryParse(json['returnedAt'] ?? '') ?? DateTime.now(),
     );
   }
 
   Map<String, dynamic> toJson() {
     return {
       'id': id,
-      'supplierName': supplierName,
-      'date': date.toIso8601String(), // Convert DateTime back to String
-      'bagsCollected': bagsCollected,
+      'collectionId': collectionId,
       'bagsReturned': bagsReturned,
+      'proxyName': proxyName,
+      'supplierId': supplierId,
+      'returnedAt': returnedAt.toIso8601String(),
     };
   }
+}
 
-  SackRecord copyWith({
-    String? id,
-    String? supplierName,
-    DateTime? date, // Accept DateTime for copying
-    int? bagsCollected,
-    int? bagsReturned,
-  }) {
-    return SackRecord(
-      id: id ?? this.id,
-      supplierName: supplierName ?? this.supplierName,
-      date: date ?? this.date,
-      bagsCollected: bagsCollected ?? this.bagsCollected,
-      bagsReturned: bagsReturned ?? this.bagsReturned,
+
+
+class SackCollection {
+  final String id;
+  final int supplierId;
+  final int bagsCollected;
+  final String? proxyName;
+  final DateTime collectedAt;
+  final DateTime createdAt;
+  final DateTime updatedAt;
+
+  SackCollection({
+    required this.id,
+    required this.supplierId,
+    required this.bagsCollected,
+    this.proxyName,
+    required this.collectedAt,
+    required this.createdAt,
+    required this.updatedAt,
+  });
+
+  factory SackCollection.fromJson(Map<String, dynamic> json) {
+    return SackCollection(
+      id: (json['id'] ?? 0).toString(),
+      supplierId: json['supplierId'] ?? 0,
+      bagsCollected: json['bagsCollected'] ?? 0,
+      proxyName: json['proxyName'],
+      collectedAt: DateTime.tryParse(json['collectedAt'] ?? '') ?? DateTime.now(),
+      createdAt: DateTime.tryParse(json['createdAt'] ?? '') ?? DateTime.now(),
+      updatedAt: DateTime.tryParse(json['updatedAt'] ?? '') ?? DateTime.now(),
     );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'supplierId': supplierId,
+      'bagsCollected': bagsCollected,
+      'proxyName': proxyName,
+      'collectedAt': collectedAt.toIso8601String(),
+      'createdAt': createdAt.toIso8601String(),
+      'updatedAt': updatedAt.toIso8601String(),
+    };
   }
 }

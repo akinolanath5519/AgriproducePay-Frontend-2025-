@@ -1,4 +1,5 @@
 import 'package:agriproduce/screens/login_page.dart';
+import 'package:agriproduce/services/connectivity_service.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:get_storage/get_storage.dart';
@@ -7,24 +8,43 @@ import 'package:agriproduce/theme/app_theme.dart';
 
 
 void main() async {
-  // Ensure proper initialization of Flutter bindings
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Initialize GetStorage
   await GetStorage.init();
 
-  runApp(const ProviderScope(child: MyApp()));
+  runApp(
+    ProviderScope(
+      child: MyApp(),
+    ),
+  );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerStatefulWidget {
   const MyApp({super.key});
+
+  @override
+  ConsumerState<MyApp> createState() => _MyAppState();
+}
+
+class _MyAppState extends ConsumerState<MyApp> {
+  @override
+  void initState() {
+    super.initState();
+    // Start connectivity monitoring
+    ref.read(connectivityServiceProvider).initialize();
+  }
+
+  @override
+  void dispose() {
+    ref.read(connectivityServiceProvider).dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'AgriProduce',
-        theme: appTheme, // Light theme using GetWidget
-      home: const SplashScreen(), // Show SplashScreen initially
+      theme: appTheme,
+      home: const SplashScreen(),
     );
   }
 }

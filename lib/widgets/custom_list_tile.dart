@@ -21,25 +21,34 @@ class CustomListTile extends StatelessWidget {
         ListTile(
           title: Text(
             title,
-            style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+            style: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
           ),
           subtitle: Text(
             subtitle,
-            style: TextStyle(color: Colors.grey[600], fontSize: 13),
+            style: TextStyle(
+              color: Colors.grey[600],
+              fontSize: 13,
+            ),
           ),
-          trailing: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              IconButton(
-                icon: Icon(Icons.edit, color: Theme.of(context).primaryColor),
-                onPressed: onEdit,
+          trailing: PopupMenuButton<String>(
+            onSelected: (value) {
+              if (value == 'edit' && onEdit != null) {
+                onEdit!();
+              } else if (value == 'delete' && onDelete != null) {
+                onDelete!();
+              }
+            },
+            itemBuilder: (context) => const [
+              PopupMenuItem(
+                value: 'edit',
+                child: Text('Edit'),
               ),
-              IconButton(
-                icon: Icon(
-                  Icons.delete,
-                  color: Colors.red,
-                ),
-                onPressed: onDelete,
+              PopupMenuItem(
+                value: 'delete',
+                child: Text('Delete'),
               ),
             ],
           ),

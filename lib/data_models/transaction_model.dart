@@ -1,3 +1,24 @@
+enum TransactionType {
+  PURCHASE,
+  SALE,
+}
+
+TransactionType? parseTransactionType(String? value) {
+  if (value == null) return null;
+  switch (value.toLowerCase()) {
+    case 'purchase':
+      return TransactionType.PURCHASE;
+    case 'sale':
+      return TransactionType.SALE;
+    default:
+      return null;
+  }
+}
+
+String? transactionTypeToString(TransactionType? type) {
+  return type?.name; // 'purchase' or 'sale'
+}
+
 class Transaction {
   final String? id;
   final String? commodityName;
@@ -10,8 +31,9 @@ class Transaction {
   final String? userId;
   String? userName;
 
-  /// New field
+  /// New fields
   final String? commodityCondition;
+  final TransactionType? transactionType; // now enum
 
   Transaction({
     this.id,
@@ -24,7 +46,8 @@ class Transaction {
     this.transactionDate,
     this.userId,
     this.userName,
-    this.commodityCondition, // add to constructor
+    this.commodityCondition,
+    this.transactionType,
   });
 
   factory Transaction.fromJson(Map<String, dynamic> json) {
@@ -47,7 +70,8 @@ class Transaction {
           : null,
       userId: json['userId']?.toString(),
       userName: json['userName'],
-      commodityCondition: json['commodityCondition'], // new
+      commodityCondition: json['commodityCondition'],
+      transactionType: parseTransactionType(json['transactionType']),
     );
   }
 
@@ -63,8 +87,9 @@ class Transaction {
       'transactionDate': transactionDate?.toIso8601String(),
       if (userId != null) 'userId': userId,
       if (userName != null) 'userName': userName,
-      if (commodityCondition != null)
-        'commodityCondition': commodityCondition, // new
+      if (commodityCondition != null) 'commodityCondition': commodityCondition,
+      if (transactionType != null)
+        'transactionType': transactionTypeToString(transactionType),
     };
   }
 
@@ -79,7 +104,8 @@ class Transaction {
     DateTime? transactionDate,
     String? userId,
     String? userName,
-    String? commodityCondition, // new
+    String? commodityCondition,
+    TransactionType? transactionType,
   }) {
     return Transaction(
       id: id ?? this.id,
@@ -92,7 +118,8 @@ class Transaction {
       transactionDate: transactionDate ?? this.transactionDate,
       userId: userId ?? this.userId,
       userName: userName ?? this.userName,
-      commodityCondition: commodityCondition ?? this.commodityCondition, // new
+      commodityCondition: commodityCondition ?? this.commodityCondition,
+      transactionType: transactionType ?? this.transactionType,
     );
   }
 }

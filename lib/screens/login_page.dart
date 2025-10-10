@@ -208,17 +208,12 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                               const SizedBox(height: 16),
                               Text(
                                 'AgriProduce',
-                                style: AppText.displayLarge.copyWith(
-                                  color: AppColors.deepCharcoal,
-                                ),
+                               
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Cultivating Success Together',
-                                style: AppText.captionLuxury.copyWith(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14,
-                                ),
+                                
                               ),
                             ],
                           ),
@@ -249,9 +244,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                       children: [
                                         Text(
                                           'Welcome Back',
-                                          style: AppText.heading1.copyWith(
-                                            color: AppColors.deepCharcoal,
-                                          ),
+                                         
                                         ),
                                         const SizedBox(height: 8),
                                         Container(
@@ -372,10 +365,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                                 borderRadius: BorderRadius.circular(4),
                                               ),
                                             ),
-                                            Text(
-                                              'Remember me',
-                                              style: AppText.bodySecondary,
-                                            ),
+                                            
                                           ],
                                         ),
                                         TextButton(
@@ -392,10 +382,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                           ),
                                           child: Text(
                                             'Forgot Password?',
-                                            style: AppText.bodySecondary.copyWith(
-                                              color: AppColors.primary,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                            
                                           ),
                                         ),
                                       ],
@@ -470,10 +457,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                         ),
                                         Padding(
                                           padding: const EdgeInsets.symmetric(horizontal: 16),
-                                          child: Text(
-                                            'or',
-                                            style: AppText.bodySecondary,
-                                          ),
+                                         
                                         ),
                                         Expanded(
                                           child: Divider(
@@ -490,10 +474,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                     Row(
                                       mainAxisAlignment: MainAxisAlignment.center,
                                       children: [
-                                        Text(
-                                          'New to AgriProduce? ',
-                                          style: AppText.bodySecondary,
-                                        ),
+                                        
                                         TextButton(
                                           onPressed: () {
                                             Navigator.push(
@@ -525,9 +506,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                         const SizedBox(height: 40),                    // Footer with additional info
                         Text(
                           'Secure agricultural management platform',
-                          style: AppText.captionLuxury.copyWith(
-                            color: AppColors.textSecondary.withOpacity(0.7),
-                          ),
+                          
                         ),
                         
                         const SizedBox(height: 20),

@@ -1,15 +1,93 @@
-import 'package:agriproduce/screens/sack_screen.dart';
+import 'package:agriproduce/screens/subscription_plan_screen.dart';
+import 'package:agriproduce/utilis/formatter.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:agriproduce/screens/bulkweight_screen.dart';
 import 'package:agriproduce/screens/commodity_screen.dart';
-import 'package:agriproduce/screens/sales_screen.dart';
 import 'package:agriproduce/screens/supplier_screen.dart';
-import 'package:agriproduce/widgets/analytics_card.dart';
 import 'package:agriproduce/state_management/supplier_provider.dart';
 import 'package:agriproduce/state_management/transaction_provider.dart';
 import 'package:agriproduce/state_management/auth_provider.dart';
 import 'package:skeleton_loader/skeleton_loader.dart';
+import 'package:agriproduce/screens/sack_screen.dart';
+import 'package:agriproduce/theme/app_theme.dart';
+
+/// ✅ Reusable Analytics Card
+class AnalyticsCard extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String value;
+  final Color? valueColor;
+  final Color? iconColor;
+
+  const AnalyticsCard({
+    super.key,
+    required this.icon,
+    required this.title,
+    required this.value,
+    this.valueColor,
+    this.iconColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final Color effectiveIconColor = iconColor ?? AppColors.primary;
+
+    return Card(
+      color: Colors.white,
+      elevation: 0.5,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(12),
+      ),
+      child: SizedBox(
+        height: 100,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              // Icon
+              Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: effectiveIconColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Icon(icon, color: effectiveIconColor, size: 28),
+              ),
+              const SizedBox(width: 16),
+
+              // Title + Value
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      title,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      value,
+                      style:
+                          Theme.of(context).textTheme.headlineSmall?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: valueColor ?? AppColors.textPrimary,
+                              ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
 
 class HomeScreen extends ConsumerStatefulWidget {
   final bool isAdmin;
@@ -56,6 +134,10 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final transactions = ref.watch(transactionProvider);
     final user = ref.watch(userProvider);
 
+    final double totalPurchases =
+        transactions.fold<double>(0, (sum, txn) => sum + txn.price);
+    final int activeSuppliers = suppliers.length;
+
     final options = [
       {
         'title': 'Add Supplier',
@@ -79,125 +161,201 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           },
         },
       {
-        'title': 'Add Bulk Weight',
-        'icon': Icons.scale,
-        'onTap': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const BulkWeightScreen()),
-          );
-        },
-      },
-      {
-        'title': 'Sales',
-        'icon': Icons.shopping_cart,
-        'onTap': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(builder: (context) => const SalesScreen()),
-          );
-        },
-      },
-      {
         'title': 'Sack Management',
         'icon': Icons.shopping_bag,
         'onTap': () {
           Navigator.push(
             context,
-            MaterialPageRoute(builder: (context) =>  SackManagementScreen()),
+            MaterialPageRoute(
+                builder: (context) => const SackManagementScreen()),
+          );
+        },
+      },
+      {
+        'title': 'Payment & Subscription',
+        'icon': Icons.payment,
+        'onTap': () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const SubscriptionPaymentPage()),
           );
         },
       },
     ];
 
+    // ✅ List of colors for quick action icons
+    final List<Color> iconColors = [
+      Colors.green,
+      Colors.orange,
+      Colors.purple,
+      Colors.blue,
+      Colors.red,
+    ];
+
+    // ✅ Dummy recent transactions
+    final dummyTransactions = [
+      {"title": "Cashew Purchase", "amount": 50000, "date": "Today"},
+      {"title": "Cocoa Purchase", "amount": 75000, "date": "Yesterday"},
+      {"title": "Palm Kernel Purchase", "amount": 32000, "date": "2 days ago"},
+    ];
+
     return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: _fetchAnalyticsData,
-        child: ListView(
-          padding: const EdgeInsets.all(16.0),
-          children: [
-            const SizedBox(height: 10),
-            Text(
-              user != null
-                  ? 'Welcome back, ${user.name}! 👋'
-                  : 'Welcome back! 👋',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    color: Colors.purple,
-                  ),
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 20),
-            isAnalyticsLoading
-                ? SkeletonLoader(
-                    builder: Container(
-                      height: 200,
-                      color: Colors.white,
-                      child: Column(
-                        children: List.generate(3, (index) {
-                          return Padding(
-                            padding: const EdgeInsets.symmetric(vertical: 8.0),
-                            child: SkeletonLoader(
-                              builder: Container(
-                                height: 30,
-                                color: Colors.grey[300],
-                              ),
-                            ),
-                          );
-                        }),
+      body: AppBackground(
+        child: RefreshIndicator(
+          onRefresh: _fetchAnalyticsData,
+          child: ListView(
+            padding: const EdgeInsets.all(16.0),
+            children: [
+              const SizedBox(height: 10),
+              Text(
+                user != null ? 'Good morning, ${user.name}!' : 'Good morning!',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                textAlign: TextAlign.left,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Here's your trading overview for today",
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Colors.grey[600],
+                    ),
+              ),
+              const SizedBox(height: 24),
+
+              // ✅ Analytics Cards
+              if (isAnalyticsLoading)
+                SkeletonLoader(
+                  builder: Column(
+                    children: List.generate(
+                      2,
+                      (index) => Container(
+                        height: 100,
+                        margin: const EdgeInsets.only(bottom: 12),
+                        color: Colors.grey[300],
                       ),
                     ),
-                  )
-                : AnalyticsCard(
-                    title: 'Analytics Overview',
-                    data: [
-                      {
-                        'title': 'Total Suppliers',
-                        'value': suppliers.length.toString()
-                      },
-                      {
-                        'title': 'Total Purchases',
-                        'value': transactions.length.toString()
-                      },
-                    ],
                   ),
-            const SizedBox(height: 5),
-            // ✅ GridView for management options
-            GridView.builder(
-              shrinkWrap: true,
-              physics: const NeverScrollableScrollPhysics(),
-              itemCount: options.length,
-              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                crossAxisCount: 2, // 2 items per row
-                crossAxisSpacing: 5,
-                mainAxisSpacing: 5,
-                childAspectRatio: 1.2,
+                )
+              else
+                Column(
+                  children: [
+                    AnalyticsCard(
+                      icon: Icons.shopping_cart,
+                      title: "Total Purchases",
+                      value: "₦${totalPurchases.toFormatted()}",
+                    ),
+                    const SizedBox(height: 2),
+                    AnalyticsCard(
+                      icon: Icons.people,
+                      title: "Active Suppliers",
+                      value: activeSuppliers.toString(),
+                      iconColor: Colors.blue,
+                    ),
+                  ],
+                ),
+
+              const SizedBox(height: 32),
+
+              // ✅ Quick Actions Section
+              Text(
+                "Quick Actions",
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
               ),
-              itemBuilder: (context, index) {
-                final option = options[index];
-                return GestureDetector(
-                  onTap: option['onTap'] as void Function()?,
-                  child: Card(
-                    elevation: 2,
+              const SizedBox(height: 16),
+
+              Card(
+                color: Colors.white,
+                elevation: 2,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Padding(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                    children: options.asMap().entries.map((entry) {
+                      final index = entry.key;
+                      final option = entry.value;
+                      final iconColor = iconColors[index % iconColors.length];
+
+                      return Expanded(
+                        child: InkWell(
+                          onTap: option['onTap'] as void Function()?,
+                          borderRadius: BorderRadius.circular(12),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              CircleAvatar(
+                                backgroundColor: iconColor.withOpacity(0.1),
+                                radius: 24,
+                                child: Icon(
+                                  option['icon'] as IconData,
+                                  color: iconColor,
+                                  size: 28,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Text(
+                                option['title'] as String,
+                                style: Theme.of(context)
+                                    .textTheme
+                                    .bodySmall
+                                    ?.copyWith(
+                                      fontWeight: FontWeight.w500,
+                                      color: Colors.black87,
+                                    ),
+                                textAlign: TextAlign.center,
+                                maxLines: 2,
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ),
+
+              const SizedBox(height: 32),
+
+              // ✅ Recent Transactions Section
+              Text(
+                "Recent Transactions",
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 16),
+
+              ...dummyTransactions.map((txn) => Card(
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(option['icon'] as IconData,
-                            size: 30, color: Colors.deepPurple),
-                        const SizedBox(height: 8),
-                        Text(
-                          option['title'] as String,
-                          style: const TextStyle(fontSize: 14),
+                    child: ListTile(
+                      leading: CircleAvatar(
+                        backgroundColor: Colors.green.withOpacity(0.1),
+                        child: const Icon(Icons.shopping_cart,
+                            color: Colors.green),
+                      ),
+                      title: Text(txn["title"].toString(),
+                          style: const TextStyle(fontWeight: FontWeight.w600)),
+                      subtitle: Text(txn["date"].toString()),
+                      trailing: Text(
+                        "₦${txn["amount"].toString()}",
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          color: Colors.black87,
                         ),
-                      ],
+                      ),
                     ),
-                  ),
-                );
-              },
-            ),
-          ],
+                  )),
+            ],
+          ),
         ),
       ),
     );

@@ -1,5 +1,5 @@
 class Config {
-  static const String baseUrl = 'http://10.0.2.2:3000/api';
+  static const String baseUrl = 'http://172.20.10.3:3000/api';
 }
 //android emulator   http://10.0.2.2:3000
 
@@ -9,3 +9,4 @@ class Config {
 
 //GCP cloud https://agriproducepay.ew.r.appspot.com 
 
+//windows http://192.168.0.145:3000

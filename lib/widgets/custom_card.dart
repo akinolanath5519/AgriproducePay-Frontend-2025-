@@ -1,15 +1,27 @@
 import 'package:flutter/material.dart';
 
 class CustomCard extends StatelessWidget {
-  final String title;
-  final List<Widget> content; // Accepts any list of widgets as content
-  final VoidCallback? onTap;
+  final Widget? header; // Flexible: Text, Row, Avatar, etc.
+  final List<Widget> content; // Main content (can be any widgets)
+  final VoidCallback? onTap; // Tap action
+  final Color? backgroundColor; // Custom background
+  final EdgeInsetsGeometry? padding; // Custom padding
+  final EdgeInsetsGeometry? margin; // Custom margin
+  final double borderRadius; // Custom border radius
+  final double elevation; // Shadow depth
+  final BorderSide? border; // Optional border (fixed type!)
 
   const CustomCard({
     super.key,
-    required this.title,
+    this.header,
     required this.content,
     this.onTap,
+    this.backgroundColor,
+    this.padding,
+    this.margin,
+    this.borderRadius = 8.0,
+    this.elevation = 0.5,
+    this.border,
   });
 
   @override
@@ -17,24 +29,27 @@ class CustomCard extends StatelessWidget {
     return GestureDetector(
       onTap: onTap,
       child: Card(
-        margin: const EdgeInsets.only(bottom: 14.0),
-        elevation: 0.1,
-        color: Colors.white,
+        margin: margin ?? const EdgeInsets.only(bottom: 14.0),
+        elevation: elevation,
+        color: backgroundColor ?? Colors.white,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(5.0),
-          side: BorderSide(color: Colors.grey.withOpacity(0.2)),
+          borderRadius: BorderRadius.circular(borderRadius),
+          side: border ??
+              BorderSide(
+                color: Colors.grey.withOpacity(0.2),
+                width: 1,
+              ),
         ),
         child: Padding(
-          padding: const EdgeInsets.all(8.0),
+          padding: padding ?? const EdgeInsets.all(12.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                title,
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
-              ),
-              const SizedBox(height: 8),
-              ...content, // Display the content widgets
+              if (header != null) ...[
+                header!,
+                const SizedBox(height: 8),
+              ],
+              ...content,
             ],
           ),
         ),

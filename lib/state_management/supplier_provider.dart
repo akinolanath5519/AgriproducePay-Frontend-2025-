@@ -2,8 +2,10 @@ import 'package:agriproduce/data_models/supplier_model.dart';
 import 'package:agriproduce/services/supplier_service.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-final supplierProvider = Provider<SupplierService>((ref) {
-  return SupplierService();
+final supplierServiceProvider = Provider<SupplierService>((ref) {
+  final service = SupplierService();
+  // You can't `await` in a normal provider, so call `init()` in main or splash screen!
+  return service;
 });
 
 class SupplierNotifier extends StateNotifier<List<Supplier>> {
@@ -60,6 +62,6 @@ class SupplierNotifier extends StateNotifier<List<Supplier>> {
 
 final supplierNotifierProvider =
     StateNotifierProvider<SupplierNotifier, List<Supplier>>((ref) {
-  final supplierService = ref.watch(supplierProvider);
+  final supplierService = ref.watch(supplierServiceProvider);
   return SupplierNotifier(supplierService);
 });

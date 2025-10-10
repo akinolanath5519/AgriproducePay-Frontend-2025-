@@ -1,5 +1,8 @@
+
 import 'package:agriproduce/screens/receipt_screen.dart';
 import 'package:agriproduce/state_management/transaction_provider.dart';
+import 'package:agriproduce/theme/app_theme.dart';
+import 'package:agriproduce/utilis/formatter.dart';
 import 'package:agriproduce/widgets/custom_search_bar.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -7,6 +10,9 @@ import 'package:agriproduce/constant/download_report.dart';
 import 'package:intl/intl.dart';
 import 'package:flutter_staggered_animations/flutter_staggered_animations.dart';
 import 'package:agriproduce/data_models/transaction_model.dart';
+
+
+
 
 class PurchasesScreen extends ConsumerStatefulWidget {
   final bool isAdmin;
@@ -24,6 +30,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
   DateTime? startDate;
   DateTime? endDate;
   String? selectedCondition;
+  TransactionType? selectedTransactionType;
 
   @override
   void initState() {
@@ -286,7 +293,6 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
   Widget build(BuildContext context) {
     final transactions = ref.watch(transactionProvider);
     final searchQuery = _searchController.text;
-   
 
     final filteredTransactions = transactions.where((transaction) {
       final searchLower = searchQuery.toLowerCase();
@@ -306,13 +312,16 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                   .add(const Duration(days: 1))
                   .subtract(const Duration(seconds: 1)));
 
-
       final matchesCondition = (selectedCondition == null || selectedCondition == 'All')
           ? true
           : transaction.commodityCondition?.toLowerCase() ==
               selectedCondition?.toLowerCase();
 
-      return matchesQuery && matchesDate && matchesCondition;
+      final matchesTransactionType = (selectedTransactionType == null)
+          ? true
+          : transaction.transactionType == selectedTransactionType;
+
+      return matchesQuery && matchesDate && matchesCondition && matchesTransactionType;
     }).toList();
 
     // Sort transactions by transactionDate in descending order
@@ -379,6 +388,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                               onPressed: () => downloadCsvReport(context, ref,
                                   _searchController, startDate, endDate),
                               child: const Text('Download CSV Report'),
+                             
                             ),
                           ],
                         ),
@@ -394,7 +404,26 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                             setState(() {});
                           },
                         ),
-                        const SizedBox(height: 2),
+                        
+                        // Scrollable Transaction Type Filter Buttons
+                        const SizedBox(height: 12),
+                        SizedBox(
+                          height: 40,
+                          child: ListView(
+                            scrollDirection: Axis.horizontal,
+                            children: [
+                              const SizedBox(width: 4),
+                              _buildTransactionTypeButton('All', null),
+                              const SizedBox(width: 8),
+                              _buildTransactionTypeButton('Purchase', TransactionType.PURCHASE),
+                              const SizedBox(width: 8),
+                              _buildTransactionTypeButton('Sale', TransactionType.SALE),
+                              const SizedBox(width: 4),
+                            ],
+                          ),
+                        ),
+                        
+                        const SizedBox(height: 12),
                         Row(
                           children: [
                             Expanded(
@@ -426,7 +455,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                               onPressed: _clearDateRange,
                                             ),
                                           const Icon(Icons.calendar_today,
-                                              color: Colors.deepPurple),
+                                              color: AppColors.orangeAccent),
                                         ],
                                       ),
                                     ],
@@ -461,11 +490,122 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                             ),
                           ],
                         ),
-                        const SizedBox(height: 40),
+                        
+                        // Total Summary Cards - Placed below the condition dropdown
+                        const SizedBox(height: 16),
+                        Row(
+                          children: [
+                            // Total Amount Card
+                            Expanded(
+                              child: Card(
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Total Amount',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${NumberFormat('#,##0.00').format(totalPrice)}',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            
+                            // Total Weight Card
+                            Expanded(
+                              child: Card(
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Total Weight',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        '${NumberFormat('#,##0.00').format(totalWeight)} kg',
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            
+                            // Total Transactions Card
+                            Expanded(
+                              child: Card(
+                                elevation: 2,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                                child: Padding(
+                                  padding: const EdgeInsets.all(12),
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        'Transactions',
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      const SizedBox(height: 4),
+                                      Text(
+                                        filteredTransactions.length.toString(),
+                                        style: const TextStyle(
+                                          fontSize: 16,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.primary,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 16),
                         filteredTransactions.isEmpty
                             ? Center(
                                 child: Text(
-                                  'No purchases yet',
+                                  'No transactions found',
                                   style: TextStyle(
                                     fontSize: 18,
                                     color: Colors.grey[600],
@@ -529,7 +669,7 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                                                   .start,
                                                           children: [
                                                             Text(
-                                                              'Supplier: ${transaction.supplierName}',
+                                                              '${transaction.transactionType == TransactionType.PURCHASE ? 'Supplier' : 'Customer'}: ${transaction.supplierName}',
                                                               style:
                                                                   const TextStyle(
                                                                 fontSize: 12,
@@ -586,7 +726,18 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                                     ),
                                                     const SizedBox(height: 2),
                                                     Text(
-                                                      'Date: ${DateFormat('dd-MM-yyyy').format(transaction.transactionDate!)}',
+                                                      'Type: ${transaction.transactionType == TransactionType.PURCHASE ? 'Purchase' : 'Sale'}',
+                                                      style: TextStyle(
+                                                        fontSize: 12,
+                                                        color: transaction.transactionType == TransactionType.PURCHASE 
+                                                            ? Colors.green 
+                                                            : Colors.orange,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                    const SizedBox(height: 2),
+                                                    Text(
+                                                      'Date: ${(transaction.transactionDate!.toDateFormatted())}',
                                                       style: const TextStyle(
                                                         fontSize: 12,
                                                         color: Colors.black,
@@ -594,7 +745,6 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                                     ),
                                                     const SizedBox(height: 2),
                                                     Text(
-                                                      // Adjust the date and time using the logic provided
                                                       'Time: ${DateFormat('hh:mm a').format(transaction.transactionDate!.toLocal().add(Duration(hours: -transaction.transactionDate!.toLocal().timeZoneOffset.inHours)))}',
                                                       style: const TextStyle(
                                                         fontSize: 12,
@@ -602,19 +752,17 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                                       ),
                                                     ),
                                                     Text(
-                                                      'Commodity: ${transaction.commodityName}', // Assuming `commodity` exists in `transaction`
+                                                      'Commodity: ${transaction.commodityName}',
                                                       style: const TextStyle(
                                                         fontSize: 12,
-                                                        // Making it bold to stand out
                                                         color: Colors.black,
                                                       ),
                                                     ),
                                                     const SizedBox(height: 4),
                                                     Text(
-                                                      'Commodity condition: ${transaction.commodityCondition}', // Assuming `commodity` exists in `transaction`
+                                                      'Commodity condition: ${transaction.commodityCondition}',
                                                       style: const TextStyle(
                                                         fontSize: 12,
-                                                        // Making it bold to stand out
                                                         color: Colors.black,
                                                       ),
                                                     ),
@@ -655,54 +803,6 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                                   ),
                                 ),
                               ),
-                        const Divider(
-                            height: 5, thickness: 0.05, color: Colors.grey),
-                        Column(
-                          children: [
-                            // ... other widgets
-                            const Divider(
-                                height: 1,
-                                thickness: 0.05,
-                                color: Colors.white),
-                            Column(
-                              crossAxisAlignment: CrossAxisAlignment
-                                  .start, // Aligns the texts to the left
-                              children: [
-                                Text(
-                                  'Total Weight: ${NumberFormat('#,##0.00').format(totalWeight)} kg',
-                                  style: const TextStyle(
-                                    fontSize:
-                                        14, // Increased font size for the prefix
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Total Amount: ${NumberFormat('#,##0.00').format(totalPrice)}',
-                                  style: const TextStyle(
-                                    fontSize:
-                                        14, // Increased font size for the prefix
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                // Add small vertical spacing between the texts
-
-                                const SizedBox(
-                                    height:
-                                        4), // Add small vertical spacing between the texts
-                                Text(
-                                  'Total Transactions: ${filteredTransactions.length}',
-                                  style: const TextStyle(
-                                    fontSize:
-                                        14, // Increased font size for the prefix
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 8),
                       ],
                     ),
                   ),
@@ -718,6 +818,35 @@ class _PurchasesScreenState extends ConsumerState<PurchasesScreen> {
                   ),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildTransactionTypeButton(String label, TransactionType? type) {
+    final isSelected = selectedTransactionType == type;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          selectedTransactionType = type;
+        });
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.primary : Colors.grey[200],
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: isSelected ? AppColors.primary : Colors.grey[300]!,
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black87,
+            fontWeight: FontWeight.w500,
+            fontSize: 14,
+          ),
+        ),
       ),
     );
   }

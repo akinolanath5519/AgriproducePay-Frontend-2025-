@@ -4,7 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class CommodityNotifier extends StateNotifier<List<Commodity>> {
   final CommodityService _commodityService;
-  
+
   CommodityNotifier(this._commodityService) : super([]);
 
   // Fetch commodities
@@ -20,12 +20,20 @@ class CommodityNotifier extends StateNotifier<List<Commodity>> {
 
   // Create a new commodity
   Future<void> createCommodity(WidgetRef ref, Commodity commodity) async {
-    await _commodityService.createCommodity(ref, commodity);
-    await fetchCommodities(ref); // Refresh the list after creating
+    try {
+      // Insert locally + attempt remote sync
+      await _commodityService.createCommodity(ref, commodity);
+
+      // Optimistically update state (without fetching from server)
+      state = [...state, commodity];
+    } catch (error) {
+      print('⚠️ Error creating commodity: $error');
+    }
   }
 
   // Update an existing commodity
-  Future<void> updateCommodity(WidgetRef ref, String commodityId, Commodity commodity) async {
+  Future<void> updateCommodity(
+      WidgetRef ref, String commodityId, Commodity commodity) async {
     await _commodityService.updateCommodity(ref, commodityId, commodity);
     await fetchCommodities(ref); // Refresh the list after updating
   }
@@ -37,14 +45,14 @@ class CommodityNotifier extends StateNotifier<List<Commodity>> {
   }
 }
 
-
 // Create a provider for the CommodityService
 final commodityProvider = Provider<CommodityService>((ref) {
   return CommodityService();
 });
 
 // Create a provider for the CommodityNotifier
-final commodityNotifierProvider = StateNotifierProvider<CommodityNotifier, List<Commodity>>((ref) {
+final commodityNotifierProvider =
+    StateNotifierProvider<CommodityNotifier, List<Commodity>>((ref) {
   final commodityService = ref.watch(commodityProvider);
   return CommodityNotifier(commodityService);
 });

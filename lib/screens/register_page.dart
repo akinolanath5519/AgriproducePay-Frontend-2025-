@@ -175,17 +175,12 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
                               const SizedBox(height: 16),
                               Text(
                                 'Join AgriProduce',
-                                style: AppText.displayLarge.copyWith(
-                                  color: AppColors.deepCharcoal,
-                                ),
+                               
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Start your agricultural journey',
-                                style: AppText.captionLuxury.copyWith(
-                                  color: AppColors.textSecondary,
-                                  fontSize: 14,
-                                ),
+                               
                               ),
                             ],
                           ),
@@ -216,9 +211,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
                                       children: [
                                         Text(
                                           'Create Account',
-                                          style: AppText.heading1.copyWith(
-                                            color: AppColors.deepCharcoal,
-                                          ),
+                                          
                                         ),
                                         const SizedBox(height: 8),
                                         Container(
@@ -516,7 +509,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
                                       children: [
                                         Text(
                                           'Already have an account? ',
-                                          style: AppText.bodySecondary,
+                                          
                                         ),
                                         TextButton(
                                           onPressed: () {
@@ -551,9 +544,7 @@ class _RegisterPageState extends ConsumerState<RegisterPage> with SingleTickerPr
                         // Footer
                         Text(
                           'Secure • Reliable • Agricultural-Focused',
-                          style: AppText.captionLuxury.copyWith(
-                            color: AppColors.textSecondary.withOpacity(0.7),
-                          ),
+                          
                         ),
                         
                         const SizedBox(height: 20),

@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'package:agriproduce/data_models/commodity_model.dart';
 import 'package:agriproduce/state_management/commodity_provider.dart';
+import 'package:agriproduce/utilis/formatter.dart';
 import 'package:agriproduce/utilis/snack_bar.dart';
 import 'package:agriproduce/widgets/custom_list_tile.dart';
 import 'package:agriproduce/widgets/custom_search_bar.dart';
 import 'package:agriproduce/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:intl/intl.dart';
 import 'package:shimmer/shimmer.dart';
 
 class CommodityScreen extends ConsumerStatefulWidget {
@@ -25,6 +25,9 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
 
   final TextEditingController nameController = TextEditingController();
   final TextEditingController rateController = TextEditingController();
+  final TextEditingController moistureController = TextEditingController();
+  String? selectedCondition; // ✅ DRY or WET
+
   final TextEditingController searchController = TextEditingController();
   Timer? _debounce;
 
@@ -38,6 +41,7 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
   void dispose() {
     nameController.dispose();
     rateController.dispose();
+    moistureController.dispose();
     searchController.dispose();
     _debounce?.cancel();
     super.dispose();
@@ -45,7 +49,6 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
 
   Future<void> _fetchCommodities() async {
     setState(() => isLoading = true);
-
     try {
       final commodities = ref.read(commodityNotifierProvider);
       if (commodities.isEmpty) {
@@ -67,8 +70,12 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
 
   void _showCommodityDialog(BuildContext context, {Commodity? commodity}) {
     final theme = Theme.of(context);
+
     nameController.text = commodity?.name ?? '';
     rateController.text = commodity?.rate.toString() ?? '';
+    moistureController.text = commodity?.moisture?.toString() ?? '';
+    // ✅ Default to WET if null
+    selectedCondition = commodity?.condition ?? 'WET';
 
     showDialog(
       context: context,
@@ -105,6 +112,35 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
                     ),
                     keyboardType: TextInputType.number,
                   ),
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: moistureController,
+                    decoration: InputDecoration(
+                      labelText: 'Moisture (%)',
+                      border: OutlineInputBorder(
+                          borderRadius: theme.mediumBorderRadius),
+                    ),
+                    keyboardType: TextInputType.number,
+                  ),
+                  const SizedBox(height: 12),
+
+                  // ✅ Dropdown with WET first
+                  DropdownButtonFormField<String>(
+                    value: selectedCondition,
+                    decoration: InputDecoration(
+                      labelText: 'Condition',
+                      border: OutlineInputBorder(
+                          borderRadius: theme.mediumBorderRadius),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'WET', child: Text('Wet')),
+                      DropdownMenuItem(value: 'DRY', child: Text('Dry')),
+                    ],
+                    onChanged: (value) {
+                      setStateDialog(() => selectedCondition = value);
+                    },
+                  ),
+
                   if (isCreating || isUpdating)
                     Padding(
                       padding: const EdgeInsets.only(top: 16.0),
@@ -142,6 +178,8 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
                   final name = nameController.text.trim();
                   final double? rate =
                       double.tryParse(rateController.text.trim());
+                  final double? moisture =
+                      double.tryParse(moistureController.text.trim());
 
                   if (rate == null || rate <= 0) {
                     showErrorSnackbar(context, 'Rate must be greater than 0.');
@@ -170,22 +208,24 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
                   }
 
                   try {
+                    final newCommodity = Commodity(
+                      id: commodity?.id ?? '',
+                      name: name,
+                      rate: rate,
+                      moisture: moisture,
+                      condition: selectedCondition,
+                    );
+
                     if (commodity == null) {
                       await ref
                           .read(commodityNotifierProvider.notifier)
-                          .createCommodity(
-                            ref,
-                            Commodity(id: '', name: name, rate: rate),
-                          );
+                          .createCommodity(ref, newCommodity);
                     } else {
                       await ref
                           .read(commodityNotifierProvider.notifier)
-                          .updateCommodity(
-                            ref,
-                            commodity.id,
-                            Commodity(id: commodity.id, name: name, rate: rate),
-                          );
+                          .updateCommodity(ref, commodity.id, newCommodity);
                     }
+
                     _fetchCommodities();
                     Navigator.of(context).pop();
                     showSuccessSnackbar(
@@ -194,9 +234,15 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
                           ? 'Commodity added successfully!'
                           : 'Commodity updated successfully!',
                     );
-                  } catch (_) {
-                    showErrorSnackbar(context,
-                        'Error ${commodity == null ? 'adding' : 'updating'} commodity.');
+                  } catch (error, stackTrace) {
+                    // 👇 This will give you more detail in console
+                    debugPrint("❌ Error adding/updating commodity: $error");
+                    debugPrintStack(stackTrace: stackTrace);
+
+                    showErrorSnackbar(
+                      context,
+                      'Error ${commodity == null ? 'adding' : 'updating'} commodity.',
+                    );
                   } finally {
                     setStateDialog(() {
                       isCreating = false;
@@ -218,7 +264,6 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
 
   void _showDeleteConfirmDialog(BuildContext context, String commodityId) {
     final theme = Theme.of(context);
-
     showDialog(
       context: context,
       builder: (context) {
@@ -289,73 +334,65 @@ class _CommodityScreenState extends ConsumerState<CommodityScreen> {
         title: Text('Commodities',
             style: theme.textTheme.titleLarge?.copyWith(color: Colors.white)),
       ),
-      body: Stack(
-        children: [
-          Container(color: theme.scaffoldBackgroundColor),
-          if (isLoading)
-            Shimmer.fromColors(
-              baseColor: Colors.grey[300]!,
-              highlightColor: Colors.grey[100]!,
-              child: Container(color: Colors.white),
-            )
-          else
-            RefreshIndicator(
-              onRefresh: _fetchCommodities,
-              child: Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: CustomSearchBar(
-                      controller: searchController,
-                      hintText: 'Search by name or rate',
-                      onChanged: _onSearchChanged,
-                      onClear: () => setState(() => searchController.clear()),
+      body: AppBackground(
+        child: Stack(
+          children: [
+            if (isLoading)
+              Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(color: Colors.white),
+              )
+            else
+              RefreshIndicator(
+                onRefresh: _fetchCommodities,
+                child: Column(
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: CustomSearchBar(
+                        controller: searchController,
+                        hintText: 'Search by name or rate',
+                        onChanged: _onSearchChanged,
+                        onClear: () => setState(() => searchController.clear()),
+                      ),
                     ),
-                  ),
-                  Expanded(
-                    child: ListView.builder(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      itemCount: filteredCommodities.length,
-                      itemBuilder: (context, index) {
-                        final commodity = filteredCommodities[index];
-                        return AnimatedContainer(
-                          duration: const Duration(milliseconds: 300),
-                          margin: const EdgeInsets.symmetric(
-                              vertical: 8, horizontal: 16),
-                          decoration: BoxDecoration(
-                            color: Colors.white,
-                            borderRadius: theme.mediumBorderRadius,
-                            boxShadow: [theme.subtleShadow],
-                          ),
-                          child: CustomListTile(
+                    Expanded(
+                      child: ListView.builder(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        itemCount: filteredCommodities.length,
+                        itemBuilder: (context, index) {
+                          final commodity = filteredCommodities[index];
+                          return CustomListTile(
                             title: commodity.name,
-                            subtitle:
-                                'Rate: ${NumberFormat('#,##0.00').format(commodity.rate)}',
+                            subtitle: 'Rate: ${commodity.rate.toFormatted()}\n'
+                                'Moisture: ${commodity.moisture ?? '-'}%\n'
+                                'Condition: ${commodity.condition ?? '-'}',
                             onEdit: () => _showCommodityDialog(context,
                                 commodity: commodity),
                             onDelete: () =>
                                 _showDeleteConfirmDialog(context, commodity.id),
-                          ),
-                        );
-                      },
-                      cacheExtent: 300,
+                          );
+                        },
+                        cacheExtent: 300,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          if (isCreating || isUpdating || isDeleting)
-            Positioned(
-              bottom: 20,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: CircularProgressIndicator(
-                    valueColor:
-                        AlwaysStoppedAnimation(theme.colorScheme.primary)),
+            if (isCreating || isUpdating || isDeleting)
+              Positioned(
+                bottom: 20,
+                left: 0,
+                right: 0,
+                child: Center(
+                  child: CircularProgressIndicator(
+                      valueColor:
+                          AlwaysStoppedAnimation(theme.colorScheme.primary)),
+                ),
               ),
-            ),
-        ],
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showCommodityDialog(context),

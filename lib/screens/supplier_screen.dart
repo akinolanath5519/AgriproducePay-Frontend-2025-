@@ -12,7 +12,6 @@ import 'package:shimmer/shimmer.dart';
 import 'package:csv/csv.dart';
 import 'package:flutter_file_dialog/flutter_file_dialog.dart';
 
-
 class SupplierScreen extends ConsumerStatefulWidget {
   const SupplierScreen({super.key});
 
@@ -65,7 +64,9 @@ class _SupplierScreenState extends ConsumerState<SupplierScreen> {
       builder: (context) => StatefulBuilder(
         builder: (context, setStateDialog) {
           return AlertDialog(
-            shape: RoundedRectangleBorder(borderRadius: theme.mediumBorderRadius),
+            shape: RoundedRectangleBorder(
+              borderRadius: theme.mediumBorderRadius,
+            ),
             title: Text(
               supplier == null ? 'Add Supplier' : 'Edit Supplier',
               style: theme.textTheme.titleLarge,
@@ -83,12 +84,15 @@ class _SupplierScreenState extends ConsumerState<SupplierScreen> {
                     keyboardType: TextInputType.phone,
                   ),
                   const SizedBox(height: 12),
-                  CustomTextField(controller: addressController, label: 'Address'),
+                  CustomTextField(
+                      controller: addressController, label: 'Address'),
                   if (isCreating || isUpdating)
                     Padding(
                       padding: const EdgeInsets.only(top: 16.0),
                       child: CircularProgressIndicator(
-                        valueColor: AlwaysStoppedAnimation(theme.colorScheme.primary),
+                        valueColor: AlwaysStoppedAnimation(
+                          theme.colorScheme.primary,
+                        ),
                       ),
                     ),
                 ],
@@ -97,12 +101,20 @@ class _SupplierScreenState extends ConsumerState<SupplierScreen> {
             actions: [
               TextButton(
                 onPressed: () => Navigator.of(context).pop(),
-                child: Text('Cancel', style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+                child: Text(
+                  'Cancel',
+                  style: theme.textTheme.bodyLarge?.copyWith(
+                    color: theme.colorScheme.primary,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
               ElevatedButton(
                 style: ElevatedButton.styleFrom(
                   backgroundColor: theme.colorScheme.primary,
-                  shape: RoundedRectangleBorder(borderRadius: theme.mediumBorderRadius),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: theme.mediumBorderRadius,
+                  ),
                 ),
                 onPressed: () async {
                   setStateDialog(() {
@@ -122,22 +134,34 @@ class _SupplierScreenState extends ConsumerState<SupplierScreen> {
 
                   try {
                     if (supplier == null) {
-                      await ref.read(supplierNotifierProvider.notifier).createSupplier(
+                      await ref
+                          .read(supplierNotifierProvider.notifier)
+                          .createSupplier(
                             ref,
-                            Supplier(id: '', name: name, contact: contactController.text, address: addressController.text),
+                            Supplier(
+                              id: '',
+                              name: name,
+                              contact: contactController.text,
+                              address: addressController.text,
+                            ),
                           );
-                      showSuccessSnackbar(context, 'Supplier added successfully!');
+                      showSuccessSnackbar(
+                          context, 'Supplier added successfully!');
                     } else {
-                      await ref.read(supplierNotifierProvider.notifier).updateSupplier(
+                      await ref
+                          .read(supplierNotifierProvider.notifier)
+                          .updateSupplier(
                             ref,
                             supplier.id,
                             Supplier(
-                                id: supplier.id,
-                                name: name,
-                                contact: contactController.text,
-                                address: addressController.text),
+                              id: supplier.id,
+                              name: name,
+                              contact: contactController.text,
+                              address: addressController.text,
+                            ),
                           );
-                      showSuccessSnackbar(context, 'Supplier updated successfully!');
+                      showSuccessSnackbar(
+                          context, 'Supplier updated successfully!');
                     }
                     _fetchSuppliers();
                     Navigator.of(context).pop();
@@ -150,7 +174,10 @@ class _SupplierScreenState extends ConsumerState<SupplierScreen> {
                     });
                   }
                 },
-                child: Text(supplier == null ? 'Add' : 'Save', style: theme.textTheme.labelLarge),
+                child: Text(
+                  supplier == null ? 'Add' : 'Save',
+                  style: theme.textTheme.labelLarge,
+                ),
               ),
             ],
           );
@@ -166,21 +193,34 @@ class _SupplierScreenState extends ConsumerState<SupplierScreen> {
       builder: (context) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: theme.mediumBorderRadius),
         title: Text('Delete Supplier', style: theme.textTheme.titleLarge),
-        content: Text('Are you sure you want to delete this supplier? This action cannot be undone.', style: theme.textTheme.bodyLarge),
+        content: Text(
+          'Are you sure you want to delete this supplier? This action cannot be undone.',
+          style: theme.textTheme.bodyLarge,
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: Text('Cancel', style: theme.textTheme.bodyLarge?.copyWith(color: theme.colorScheme.primary, fontWeight: FontWeight.bold)),
+            child: Text(
+              'Cancel',
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
           ),
           ElevatedButton(
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.error,
-              shape: RoundedRectangleBorder(borderRadius: theme.mediumBorderRadius),
+              shape: RoundedRectangleBorder(
+                borderRadius: theme.mediumBorderRadius,
+              ),
             ),
             onPressed: () async {
               setState(() => isDeleting = true);
               try {
-                await ref.read(supplierNotifierProvider.notifier).deleteSupplier(ref, supplierId);
+                await ref
+                    .read(supplierNotifierProvider.notifier)
+                    .deleteSupplier(ref, supplierId);
                 _fetchSuppliers();
                 Navigator.of(context).pop();
                 showSuccessSnackbar(context, 'Supplier deleted successfully!');
@@ -190,7 +230,10 @@ class _SupplierScreenState extends ConsumerState<SupplierScreen> {
                 setState(() => isDeleting = false);
               }
             },
-            child: Text('Delete', style: theme.textTheme.labelLarge?.copyWith(color: Colors.white)),
+            child: Text(
+              'Delete',
+              style: theme.textTheme.labelLarge?.copyWith(color: Colors.white),
+            ),
           ),
         ],
       ),
@@ -231,12 +274,18 @@ class _SupplierScreenState extends ConsumerState<SupplierScreen> {
     final theme = Theme.of(context);
     final suppliers = ref.watch(supplierNotifierProvider);
     final filteredSuppliers = suppliers
-        .where((s) => s.name.toLowerCase().contains(searchTerm.toLowerCase()) || (s.contact ?? '').contains(searchTerm))
+        .where((s) =>
+            s.name.toLowerCase().contains(searchTerm.toLowerCase()) ||
+            (s.contact ?? '').contains(searchTerm))
         .toList();
 
     return Scaffold(
       appBar: AppBar(
-        title: Text('Suppliers', style: theme.textTheme.titleLarge?.copyWith(color: Colors.white)),
+        title: Text(
+          'Suppliers',
+          style: theme.textTheme.titleLarge
+              ?.copyWith(color: AppColors.textPrimary),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.download),
@@ -244,58 +293,54 @@ class _SupplierScreenState extends ConsumerState<SupplierScreen> {
           )
         ],
       ),
-      body: Stack(
-        children: [
-          Column(
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: CustomSearchBar(
-                  controller: searchController,
-                  hintText: 'Search Suppliers',
-                  onChanged: (val) => setState(() => searchTerm = val),
-                  onClear: () => setState(() {
-                    searchTerm = '';
-                    searchController.clear();
-                  }),
-                ),
-              ),
-              Expanded(
-                child: RefreshIndicator(
-                  onRefresh: _fetchSuppliers,
-                  child: ListView.builder(
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    itemCount: filteredSuppliers.length,
-                    itemBuilder: (context, index) {
-                      final supplier = filteredSuppliers[index];
-                      return AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: theme.mediumBorderRadius,
-                          boxShadow: [theme.subtleShadow],
-                        ),
-                        child: CustomListTile(
-                          title: supplier.name,
-                          subtitle: 'Contact: ${supplier.contact}\nAddress: ${supplier.address}',
-                          onEdit: () => _showSupplierDialog(context, supplier: supplier),
-                          onDelete: () => _showDeleteConfirmationDialog(context, supplier.id),
-                        ),
-                      );
-                    },
+      body: AppBackground(
+        child: Stack(
+          children: [
+            Column(
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: CustomSearchBar(
+                    controller: searchController,
+                    hintText: 'Search Suppliers',
+                    onChanged: (val) => setState(() => searchTerm = val),
+                    onClear: () => setState(() {
+                      searchTerm = '';
+                      searchController.clear();
+                    }),
                   ),
                 ),
-              ),
-            ],
-          ),
-          if (isLoading)
-            Shimmer.fromColors(
-              baseColor: Colors.grey[300]!,
-              highlightColor: Colors.grey[100]!,
-              child: Container(color: Colors.white),
+                Expanded(
+                  child: RefreshIndicator(
+                    onRefresh: _fetchSuppliers,
+                    child: ListView.builder(
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      itemCount: filteredSuppliers.length,
+                      itemBuilder: (context, index) {
+                        final supplier = filteredSuppliers[index];
+                        return CustomListTile(
+                          title: supplier.name,
+                          subtitle:
+                              'Contact: ${supplier.contact}\nAddress: ${supplier.address}',
+                          onEdit: () =>
+                              _showSupplierDialog(context, supplier: supplier),
+                          onDelete: () => _showDeleteConfirmationDialog(
+                              context, supplier.id),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ],
             ),
-        ],
+            if (isLoading)
+              Shimmer.fromColors(
+                baseColor: Colors.grey[300]!,
+                highlightColor: Colors.grey[100]!,
+                child: Container(color: Colors.white),
+              ),
+          ],
+        ),
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => _showSupplierDialog(context),

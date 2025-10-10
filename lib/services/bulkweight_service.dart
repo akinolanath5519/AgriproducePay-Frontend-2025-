@@ -1,280 +1,144 @@
 import 'dart:convert';
-import 'package:http/http.dart' as http;
-import 'package:agriproduce/data_models/bulkweight_model.dart';
-import 'package:agriproduce/constant/config.dart';
 import 'package:agriproduce/constant/appLogger.dart';
 import 'package:agriproduce/constant/httpError.dart';
-import 'package:agriproduce/state_management/token_provider.dart';
+import 'package:agriproduce/data_models/bulkweight_model.dart';
+import 'package:agriproduce/utilis/api_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// ---------------- LOCAL BULKWEIGHT CACHE ----------------
 class LocalBulkWeightService {
-  // Save a bulk weight entry locally
+  final List<BulkWeight> _bulkWeights = [];
+  final List<BulkWeightEntry> _entries = [];
+
+  // BulkWeight
   void saveBulkWeight(BulkWeight bulkWeight) {
-    AppLogger.logInfo('BulkWeight saved locally: ${bulkWeight.toJson()}');
+    _bulkWeights.add(bulkWeight);
+    AppLogger.logInfo('💾 Saved BulkWeight locally: ${bulkWeight.toString()}');
   }
 
-  // Retrieve all bulk weight entries
-  List<BulkWeight> getAllBulkWeights() {
-    return [];
-  }
+  List<BulkWeight> getAllBulkWeights() => _bulkWeights;
+  bool isBulkWeightCached() => _bulkWeights.isNotEmpty;
 
-  // Check if data is cached
-  bool isDataCached() {
-    return false;
-  }
-
-  // Delete a bulk weight entry
   void deleteBulkWeight(String id) {
-    AppLogger.logInfo('BulkWeight deleted locally with id: $id');
+    _bulkWeights.removeWhere((bw) => bw.id == id);
+    AppLogger.logInfo('🗑 Deleted local BulkWeight: $id');
+  }
+
+  // BulkWeightEntry
+  void saveEntry(BulkWeightEntry entry) {
+    _entries.add(entry);
+    AppLogger.logInfo('💾 Saved BulkWeightEntry locally: ${entry.toJson()}');
+  }
+
+  List<BulkWeightEntry> getAllEntries() => _entries;
+  bool isEntryCached() => _entries.isNotEmpty;
+
+  void deleteEntry(String id) {
+    _entries.removeWhere((e) => e.id == id);
+    AppLogger.logInfo('🗑 Deleted local BulkWeightEntry: $id');
   }
 }
 
+/// ---------------- REMOTE BULKWEIGHT SERVICE ----------------
 class BulkWeightService {
   final LocalBulkWeightService localService = LocalBulkWeightService();
 
-  // Create bulk weight entry
-  Future<void> createBulkWeight(WidgetRef ref, List<BulkWeight> bulkWeights) async {
-    for (var bulkWeight in bulkWeights) {
-      localService.saveBulkWeight(bulkWeight);
-    }
-
-    AppLogger.logInfo('Attempting to save bulk weight entries remotely.');
-
-    final token = ref.read(tokenProvider);
-    if (token == null) {
-      AppLogger.logError('Token is null, user not authenticated');
-      throw Exception('User not authenticated');
-    }
-
+  /// Create BulkWeight
+  Future<void> createBulkWeight(WidgetRef ref, BulkWeight bulkWeight) async {
+    localService.saveBulkWeight(bulkWeight);
     try {
-      final response = await http.post(
-        Uri.parse('${Config.baseUrl}/bulkweight'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          'entries': bulkWeights.map((entry) => entry.toJson()).toList(),
-        }),
-      );
-
-      HttpErrorHandler.handleResponse(response, 'create bulk weight entries');
+      await apiPost(ref, '/bulkweights/bulkweight', bulkWeight.toJson());
     } catch (e, stackTrace) {
-      AppLogger.logError('Error saving bulk weight entries remotely: $e', e, stackTrace);
+      AppLogger.logError('❌ Failed to create BulkWeight: $e', e, stackTrace);
     }
   }
 
-  // Get all bulk weight entries
-  Future<List<BulkWeight>> getBulkWeights(WidgetRef ref) async {
-    final token = ref.read(tokenProvider);
-    if (token == null) {
-      AppLogger.logError('Token is null, cannot fetch bulk weight entries');
-      throw Exception('User not authenticated');
+  /// Create BulkWeightEntry
+  Future<void> createEntry(WidgetRef ref, BulkWeightEntry entry) async {
+    localService.saveEntry(entry);
+    try {
+      await apiPost(ref, '/bulkweights/entries', entry.toJson());
+    } catch (e, stackTrace) {
+      AppLogger.logError('❌ Failed to create BulkWeightEntry: $e', e, stackTrace);
     }
+  }
 
-    // Return cached data if available
-    if (localService.isDataCached()) {
+  /// Get all BulkWeights
+  Future<List<BulkWeight>> getBulkWeights(WidgetRef ref) async {
+    if (localService.isBulkWeightCached()) {
+      AppLogger.logInfo('📦 Loaded BulkWeights from cache');
       return localService.getAllBulkWeights();
     }
 
     try {
-      // Send the HTTP request
-      final response = await http.get(
-        Uri.parse('${Config.baseUrl}/bulkweight'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
+      final response = await apiGet(ref, '/bulkweights/bulkweight', json: false);
+      if (response.body.isEmpty) return [];
 
-      // Handle the HTTP response
-      HttpErrorHandler.handleResponse(response, 'fetch bulk weight entries');
+      final List<dynamic> data = jsonDecode(response.body);
+      final bulkWeights = data.map((json) => BulkWeight.fromJson(json)).toList();
 
-      // If the response body is empty, return an empty list
-      if (response.body.isEmpty) {
-        AppLogger.logInfo('Response body is empty, returning empty list.');
-        return [];
-      }
-
-      // Log the raw response body for debugging
-      AppLogger.logInfo('Raw response body: ${response.body}');
-
-      try {
-        // Decode the response body into a dynamic object
-        final dynamic decodedResponse = jsonDecode(response.body);
-
-        // Check if the response is a Map<String, dynamic> (expected structure)
-        if (decodedResponse is Map<String, dynamic>) {
-          final Map<String, dynamic> transactions = decodedResponse['transactions'];
-          List<BulkWeight> bulkWeights = [];
-
-          // Process each entry in the response
-          transactions.forEach((transactionId, entries) {
-            // Log the type of entries and the transactionId
-            AppLogger.logInfo('Processing transactionId: $transactionId');
-
-            // Ensure entries is a List, and log if it's not
-            if (entries is List) {
-              for (var entry in entries) {
-                try {
-                  final bulkWeight = BulkWeight.fromJson(entry);
-                  bulkWeights.add(bulkWeight);
-                  localService.saveBulkWeight(bulkWeight);
-                } catch (e, stackTrace) {
-                  AppLogger.logError('Error decoding entry for transaction $transactionId', e, stackTrace);
-                }
-              }
-            } else {
-              // Handle cases where entries are not a list
-              AppLogger.logError('Entries for transaction $transactionId are not in the expected list format. Received: $entries');
-
-              // Optionally, handle the case where entries might be a Map
-              if (entries is Map) {
-                AppLogger.logError('Received Map for transaction $transactionId. Data: $entries');
-                // You can decide how to handle it here, e.g., converting Map to List, or skipping it
-              } else {
-                AppLogger.logError('Unexpected data type for entries: ${entries.runtimeType}');
-              }
-            }
-          });
-
-          return bulkWeights;
-        } else {
-          // If the decoded response is not a Map<String, dynamic>, log the error
-          AppLogger.logError('Decoded response is not a Map<String, dynamic>. Response: $decodedResponse');
-          throw Exception('Invalid data format from server');
-        }
-      } catch (e, stackTrace) {
-        // Handle JSON decoding error
-        HttpErrorHandler.handleJsonDecodingError('decode bulk weight entries', e);
-        AppLogger.logError('Error decoding JSON for bulk weight entries', e, stackTrace);
-        throw Exception('Failed to decode data for bulk weight entries');
-      }
+      bulkWeights.forEach(localService.saveBulkWeight);
+      return bulkWeights;
     } catch (e, stackTrace) {
-      // Handle network or server errors
-      AppLogger.logError('Error fetching bulk weight entries from server: $e', e, stackTrace);
-      throw Exception('Failed to fetch bulk weight entries from server');
+      HttpErrorHandler.handleJsonDecodingError('decode bulkweights', e);
+      AppLogger.logError('❌ Error fetching bulkweights: $e', e, stackTrace);
     }
+
+    return localService.getAllBulkWeights();
   }
 
-  // Update bulk weight entry
-    
-  Future<void> updateBulkWeight(WidgetRef ref, String entryId, BulkWeight bulkWeight) async {
-    localService.saveBulkWeight(bulkWeight);
-    AppLogger.logInfo('Attempting to update bulk weight remotely with id: $entryId');
-  
-    final token = ref.read(tokenProvider);
-    if (token == null) {
-      AppLogger.logError('Token is null, user not authenticated');
-      throw Exception('User not authenticated');
-    }
-  
-    try {
-      final response = await http.put(
-        Uri.parse('${Config.baseUrl}/bulkweight/$entryId'),
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
-        body: jsonEncode(bulkWeight.toJson()),
-      );
-  
-      HttpErrorHandler.handleResponse(response, 'update bulk weight');
-    } catch (e, stackTrace) {
-      AppLogger.logError('Error updating bulk weight remotely: $e', e, stackTrace);
-    }
-  }
-
-  // Delete bulk weight entry
-  Future<void> deleteBulkWeight(WidgetRef ref, String entryId) async {
-    localService.deleteBulkWeight(entryId);
-    AppLogger.logInfo('Attempting to delete bulk weight remotely with id: $entryId');
-
-    final token = ref.read(tokenProvider);
-    if (token == null) {
-      AppLogger.logError('Token is null, user not authenticated');
-      throw Exception('User not authenticated');
+  /// Get all Entries for a transaction
+  Future<List<BulkWeightEntry>> getEntries(WidgetRef ref, String transactionRef) async {
+    if (localService.isEntryCached()) {
+      AppLogger.logInfo('📦 Loaded BulkWeightEntries from cache');
+      return localService.getAllEntries();
     }
 
     try {
-      final response = await http.delete(
-        Uri.parse('${Config.baseUrl}/bulkweight/entry/$entryId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
+      final response =
+          await apiGet(ref, 'bulkweights/bulkweight/entries/$transactionRef', json: false);
+      if (response.body.isEmpty) return [];
 
-      HttpErrorHandler.handleResponse(response, 'delete bulk weight entry');
+      final List<dynamic> data = jsonDecode(response.body);
+      final entries = data.map((json) => BulkWeightEntry.fromJson(json)).toList();
+
+      entries.forEach(localService.saveEntry);
+      return entries;
     } catch (e, stackTrace) {
-      AppLogger.logError('Error deleting bulk weight remotely: $e', e, stackTrace);
+      HttpErrorHandler.handleJsonDecodingError('decode bulkweight entries', e);
+      AppLogger.logError('❌ Error fetching bulkweight entries: $e', e, stackTrace);
+    }
+
+    return localService.getAllEntries();
+  }
+
+  /// Delete BulkWeightEntry
+  Future<void> deleteEntry(WidgetRef ref, String id) async {
+    localService.deleteEntry(id);
+    try {
+      await apiDelete(ref, '/bulkweights/entries/$id');
+    } catch (e, stackTrace) {
+      AppLogger.logError('❌ Failed to delete BulkWeightEntry: $e', e, stackTrace);
     }
   }
 
-  // Delete a complete transaction
-    // Delete a complete transaction
-  Future<void> deleteTransaction(WidgetRef ref, String transactionId) async {
-    AppLogger.logInfo('Attempting to delete transaction remotely with id: $transactionId');
-  
-    final token = ref.read(tokenProvider);
-    if (token == null) {
-      AppLogger.logError('Token is null, user not authenticated');
-      throw Exception('User not authenticated');
-    }
-  
+  /// Delete BulkWeight
+  Future<void> deleteBulkWeight(WidgetRef ref, String id) async {
+    localService.deleteBulkWeight(id);
     try {
-      final response = await http.delete(
-        Uri.parse('${Config.baseUrl}/bulkweight/$transactionId'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
-  
-      HttpErrorHandler.handleResponse(response, 'delete transaction');
+      await apiDelete(ref, '/bulkweights/bulkweight/$id');
     } catch (e, stackTrace) {
-      AppLogger.logError('Error deleting transaction remotely: $e', e, stackTrace);
+      AppLogger.logError('❌ Failed to delete BulkWeight: $e', e, stackTrace);
     }
   }
 
-  // Get all transactions
-  Future<Map<String, List<BulkWeight>>> getAllTransactions(WidgetRef ref) async {
-    final token = ref.read(tokenProvider);
-    if (token == null) {
-      AppLogger.logError('Token is null, cannot fetch transactions');
-      throw Exception('User not authenticated');
-    }
-
+  /// Update BulkWeightEntry
+  Future<void> updateEntry(WidgetRef ref, BulkWeightEntry entry) async {
     try {
-      final response = await http.get(
-        Uri.parse('${Config.baseUrl}/bulkweight'),
-        headers: {
-          'Authorization': 'Bearer $token',
-        },
-      );
-
-      HttpErrorHandler.handleResponse(response, 'fetch transactions');
-
-      if (response.body.isEmpty) {
-        return {};
-      }
-
-      try {
-        final Map<String, dynamic> transactionMap = jsonDecode(response.body);
-        Map<String, List<BulkWeight>> transactions = {};
-
-        transactionMap.forEach((transactionId, entries) {
-          transactions[transactionId] = entries
-              .map<BulkWeight>((entry) => BulkWeight.fromJson(entry))
-              .toList();
-        });
-
-        return transactions;
-      } catch (e, stackTrace) {
-        HttpErrorHandler.handleJsonDecodingError('decode transactions', e);
-        AppLogger.logError('Error decoding JSON for transactions', e, stackTrace);
-      }
+      await apiPut(ref, '/bulkweights/entries/${entry.id}', entry.toJson());
+      localService.saveEntry(entry);
     } catch (e, stackTrace) {
-      AppLogger.logError('Error fetching transactions from server: $e', e, stackTrace);
+      AppLogger.logError('❌ Failed to update BulkWeightEntry: $e', e, stackTrace);
     }
-
-    return {};
   }
 }
