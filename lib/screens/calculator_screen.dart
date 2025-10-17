@@ -1,5 +1,3 @@
-// ignore_for_file: deprecated_member_use
-
 import 'package:agriproduce/constant/number_to_words.dart';
 import 'package:agriproduce/data_models/commodity_model.dart';
 import 'package:agriproduce/data_models/supplier_model.dart';
@@ -7,16 +5,18 @@ import 'package:agriproduce/data_models/transaction_model.dart';
 import 'package:agriproduce/state_management/commodity_provider.dart';
 import 'package:agriproduce/state_management/supplier_provider.dart';
 import 'package:agriproduce/state_management/transaction_provider.dart';
+import 'package:agriproduce/state_management/auth_provider.dart';
 import 'package:agriproduce/utilis/formatter.dart';
+import 'package:agriproduce/widgets/custom_dropdown.dart';
+import 'package:agriproduce/widgets/custom_button.dart';
+import 'package:agriproduce/widgets/custom_search_field.dart';
+import 'package:agriproduce/theme/app_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:searchfield/searchfield.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class CalculatorScreen extends ConsumerStatefulWidget {
-  final bool isAdmin;
-
-  const CalculatorScreen({super.key, required this.isAdmin});
+  const CalculatorScreen({super.key});
 
   @override
   CalculatorScreenState createState() => CalculatorScreenState();
@@ -30,13 +30,14 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
   String _selectedUnit = 'Polythene';
+  String? _selectedCondition;
   Commodity? _selectedCommodity;
   Supplier? _selectedSupplier;
+  TransactionType _selectedTransactionType = TransactionType.PURCHASE;
+
   double _totalPrice = 0.0;
   String _priceInWords = '';
   DateTime _transactionDate = DateTime.now();
-  String? _selectedCondition;
-  TransactionType _selectedTransactionType = TransactionType.PURCHASE; // Default to purchase
 
   final List<String> _units = ['Metric tonne', 'Tare', 'Polythene', 'Jute'];
   final Map<String, double> _unitWeights = {
@@ -47,26 +48,20 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
   };
   final List<String> _conditions = ['Dry', 'Wet'];
 
+  bool get isAdmin {
+    final user = ref.read(userProvider);
+    return user?.role.toLowerCase() == 'admin';
+  }
+
   @override
   void initState() {
     super.initState();
     ref.read(commodityNotifierProvider.notifier).fetchCommodities(ref);
     ref.read(supplierNotifierProvider.notifier).fetchSuppliers(ref);
-
     _weightController.addListener(_calculateTotalPrice);
-    if (widget.isAdmin) _rateController.addListener(_calculateTotalPrice);
-
+    if (isAdmin) _rateController.addListener(_calculateTotalPrice);
     _loadSelectedCommodity();
     _loadLastEnteredRate();
-  }
-
-  @override
-  void dispose() {
-    _weightController.dispose();
-    _rateController.dispose();
-    _commodityController.dispose();
-    _supplierController.dispose();
-    super.dispose();
   }
 
   Future<void> _loadSelectedCommodity() async {
@@ -131,7 +126,7 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
       _totalPrice = 0.0;
       _priceInWords = '';
       _transactionDate = DateTime.now();
-      _selectedTransactionType = TransactionType.PURCHASE; // Reset to purchase
+      _selectedTransactionType = TransactionType.PURCHASE;
     });
   }
 
@@ -146,8 +141,7 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
             onPressed: () {
               if (_formKey.currentState?.validate() == true) {
                 final double enteredRate =
-                    double.tryParse(_rateController.text.replaceAll(',', '')) ??
-                        0.0;
+                    double.tryParse(_rateController.text.replaceAll(',', '')) ?? 0.0;
                 final double rateToSave = enteredRate > 0
                     ? enteredRate
                     : (_selectedCommodity?.rate ?? 0.0);
@@ -161,21 +155,15 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
                   rate: rateToSave,
                   transactionDate: _transactionDate,
                   commodityCondition: _selectedCondition,
-                  transactionType: _selectedTransactionType, // Add transaction type
+                  transactionType: _selectedTransactionType,
                 );
 
-                ref
-                    .read(transactionProvider.notifier)
-                    .addTransaction(ref, transaction);
+                ref.read(transactionProvider.notifier).addTransaction(ref, transaction);
 
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: const Text(
-                      'Transaction saved successfully!',
-                      style: TextStyle(color: Colors.white),
-                    ),
+                  const SnackBar(
+                    content: Text('Transaction saved successfully!'),
                     backgroundColor: Colors.green,
-                    duration: const Duration(seconds: 1),
                   ),
                 );
 
@@ -196,300 +184,130 @@ class CalculatorScreenState extends ConsumerState<CalculatorScreen> {
     );
   }
 
-  // ------------------ Helper Widgets ------------------
-
-  Widget _buildTransactionTypeDropdown() {
-    return DropdownButtonFormField<TransactionType>(
-      value: _selectedTransactionType,
-      decoration: InputDecoration(
-        labelText: 'Transaction Type',
-        border: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey[300]!)),
-      ),
-      items: TransactionType.values
-          .map((type) => DropdownMenuItem(
-                value: type,
-                child: Text(
-                  type == TransactionType.PURCHASE ? 'Purchase' : 'Sale',
-                  style: TextStyle(
-                    color: type == TransactionType.PURCHASE 
-                        ? Colors.green 
-                        : Colors.orange,
-                  ),
-                ),
-              ))
-          .toList(),
-      onChanged: (value) {
-        setState(() {
-          _selectedTransactionType = value!;
-        });
-      },
-      validator: (value) {
-        if (value == null) return 'Please select transaction type';
-        return null;
-      },
-    );
-  }
-
-  Widget _buildWeightUnitRow() {
-    return Row(
-      children: [
-        Expanded(
-          child: Padding(
-            padding: const EdgeInsets.only(right: 8.0),
-            child: TextFormField(
-              controller: _weightController,
-              decoration: InputDecoration(
-                labelText: 'Weight',
-                border: OutlineInputBorder(
-                    borderSide: BorderSide(color: Colors.grey[300]!)),
-              ),
-              keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value == null || value.isEmpty)
-                  return 'Please enter weight';
-                double? weight = double.tryParse(value);
-                if (weight == null || weight <= 0)
-                  return 'Please enter a valid number';
-                return null;
-              },
-            ),
-          ),
-        ),
-        Expanded(
-          child: DropdownButtonFormField<String>(
-            value: _selectedUnit,
-            decoration: InputDecoration(
-              labelText: 'Select Unit',
-              border: OutlineInputBorder(
-                  borderSide: BorderSide(color: Colors.grey[300]!)),
-            ),
-            items: _units
-                .map((unit) => DropdownMenuItem(value: unit, child: Text(unit)))
-                .toList(),
-            onChanged: (value) {
-              setState(() {
-                _selectedUnit = value!;
-                _calculateTotalPrice();
-              });
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildRateField() {
-  return TextFormField(
-    controller: _rateController,
-    decoration: InputDecoration(
-      labelText: 'Rate',
-      border: OutlineInputBorder(
-          borderSide: BorderSide(color: Colors.grey[300]!)),
-    ),
-    keyboardType: const TextInputType.numberWithOptions(decimal: true),
-    enabled: widget.isAdmin,
-    validator: (value) {
-      if (widget.isAdmin && (value == null || value.isEmpty)) {
-        return 'Please enter rate';
-      }
-      return null;
-    },
-    onChanged: (value) {
-      if (!widget.isAdmin) return;
-
-      // Just update the total price dynamically, no formatting yet
-      _calculateTotalPrice();
-    },
-    onEditingComplete: () {
-      // Format only when user finishes typing
-      double rate = double.tryParse(_rateController.text.replaceAll(',', '')) ?? 0.0;
-      _rateController.text = rate.toFormatted();
-      _saveLastEnteredRate(rate);
-    },
-  );
-}
-
-  Widget _buildSearchField<T>({
-    required TextEditingController controller,
-    required List<T> suggestions,
-    required String hint,
-    required void Function(T) onSelected,
-    String? Function(String?)? validator,
-    required String Function(T) displayText,
-  }) {
-    return GestureDetector(
-      onTap: () => FocusScope.of(context).unfocus(),
-      child: Container(
-        decoration: BoxDecoration(
-          border: Border.all(color: Colors.grey[300]!),
-          borderRadius: BorderRadius.circular(8.0),
-        ),
-        child: Stack(
-          children: [
-            SearchField<T>(
-              controller: controller,
-              suggestions: suggestions
-                  .map((item) =>
-                      SearchFieldListItem<T>(displayText(item), item: item))
-                  .toList(),
-              onSuggestionTap: (suggestion) {
-                onSelected(suggestion.item as T);
-                FocusScope.of(context).unfocus();
-              },
-              hint: hint,
-              validator: validator,
-            ),
-            Positioned(
-                right: 30,
-                top: 12,
-                child: Icon(Icons.search, color: Colors.grey[600])),
-            Positioned(
-                right: 10,
-                top: 12,
-                child: Icon(Icons.arrow_drop_down, color: Colors.grey[600])),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildConditionDropdown() {
-    return DropdownButtonFormField<String>(
-      value: _selectedCondition,
-      decoration: InputDecoration(
-        labelText: 'Commodity Condition',
-        border: OutlineInputBorder(
-            borderSide: BorderSide(color: Colors.grey[300]!)),
-      ),
-      items: _conditions
-          .map((c) => DropdownMenuItem(value: c, child: Text(c)))
-          .toList(),
-      onChanged: (value) => setState(() => _selectedCondition = value!),
-      validator: (value) {
-        if (value == null || value.isEmpty) return 'Please select a condition';
-        return null;
-      },
-    );
-  }
-
-  Widget _buildAmountDisplay() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text('Amount: ${_totalPrice.toFormatted()}',
-            style: const TextStyle(fontWeight: FontWeight.bold)),
-        Text('In Words: $_priceInWords',
-            style: TextStyle(color: Colors.grey[600])),
-      ],
-    );
-  }
-
-  // ------------------ Build Method ------------------
-
   @override
   Widget build(BuildContext context) {
     final commodities = ref.watch(commodityNotifierProvider);
     final suppliers = ref.watch(supplierNotifierProvider);
 
-    return WillPopScope(
-      onWillPop: () async {
-        Navigator.pushReplacementNamed(context, '/home');
-        return true;
-      },
-      child: Scaffold(
-        body: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const SizedBox(height: 16.0),
-                
-                // Transaction Type Dropdown - Added at the top
-                _buildTransactionTypeDropdown(),
-                const SizedBox(height: 16.0),
-                
-                _buildWeightUnitRow(),
-                const SizedBox(height: 16.0),
-                _buildRateField(),
-                const SizedBox(height: 16.0),
-                _buildSearchField<Commodity>(
-                  controller: _commodityController,
-                  suggestions: commodities,
-                  hint: 'Select Commodity or type..',
-                  displayText: (c) => c.name,
-                  validator: (value) {
-                    if (widget.isAdmin && value != null && value.isNotEmpty) {
-                      _selectedCommodity = Commodity(
-                        id: '',
-                        name: value,
-                        rate: double.tryParse(
-                                _rateController.text.replaceAll(',', '')) ??
-                            0.0,
-                      );
-                    }
-                    return null;
-                  },
-                  onSelected: (c) {
-                    setState(() {
-                      _selectedCommodity = c;
-                      _commodityController.text = c.name;
-                      _rateController.text = c.rate.toFormatted();
-                      _calculateTotalPrice();
-                      _saveSelectedCommodity(c.name);
-                      _saveLastEnteredRate(c.rate);
-                    });
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                _buildSearchField<Supplier>(
-                  controller: _supplierController,
-                  suggestions: suppliers,
-                  hint: _selectedTransactionType == TransactionType.PURCHASE 
-                      ? 'Select Supplier or type..' 
-                      : 'Select Customer or type..',
-                  displayText: (s) => s.name,
-                  validator: (value) {
-                    if (_selectedSupplier == null ||
-                        _selectedSupplier!.name.isEmpty) {
-                      _selectedSupplier = Supplier(
-                          id: '',
-                          name: _selectedTransactionType == TransactionType.PURCHASE
-                              ? 'General Supplier'
-                              : 'General Customer',
-                          contact: '',
-                          address: '');
-                    }
-                    return null;
-                  },
-                  onSelected: (s) {
-                    setState(() {
-                      _selectedSupplier = s;
-                      _supplierController.text = s.name;
-                    });
-                  },
-                ),
-                const SizedBox(height: 16.0),
-                _buildConditionDropdown(),
-                const SizedBox(height: 16.0),
-                _buildAmountDisplay(),
-                const SizedBox(height: 16.0),
-                Center(
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                        minimumSize: const Size(400, 50)),
-                    onPressed: _showSaveTransactionDialog,
-                    child: Text(
-                      _selectedTransactionType == TransactionType.PURCHASE
-                          ? 'Save Purchase'
-                          : 'Save Sale',
+    return Scaffold(
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              const SizedBox(height: 16),
+              CustomDropdownField<TransactionType>(
+                label: 'Transaction Type',
+                items: TransactionType.values,
+                value: _selectedTransactionType,
+                displayText: (t) => t == TransactionType.PURCHASE ? 'Purchase' : 'Sale',
+                onChanged: (value) =>
+                    setState(() => _selectedTransactionType = value!),
+              ),
+              const SizedBox(height: 16),
+
+              // Weight + Unit
+              Row(
+                children: [
+                  Expanded(
+                    child: TextFormField(
+                      controller: _weightController,
+                      decoration: const InputDecoration(labelText: 'Weight'),
+                      keyboardType: TextInputType.number,
+                      validator: (v) =>
+                          (v == null || v.isEmpty) ? 'Enter weight' : null,
                     ),
                   ),
-                ),
-              ],
-            ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: CustomDropdownField<String>(
+                      label: 'Unit',
+                      items: _units,
+                      value: _selectedUnit,
+                      displayText: (u) => u,
+                      onChanged: (v) {
+                        setState(() {
+                          _selectedUnit = v!;
+                          _calculateTotalPrice();
+                        });
+                      },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Rate field
+              TextFormField(
+                controller: _rateController,
+                decoration: const InputDecoration(labelText: 'Rate'),
+                keyboardType: TextInputType.number,
+                enabled: isAdmin, // ✅ enabled only for admin users
+                onChanged: (_) => _calculateTotalPrice(),
+              ),
+              const SizedBox(height: 16),
+
+              // ✅ Reusable Search Fields
+              CustomSearchField<Commodity>(
+                controller: _commodityController,
+                suggestions: commodities,
+                hint: 'Select Commodity or type...',
+                displayText: (c) => c.name,
+                onSelected: (c) {
+                  setState(() {
+                    _selectedCommodity = c;
+                    _commodityController.text = c.name;
+                    _rateController.text = c.rate.toFormatted();
+                    _calculateTotalPrice();
+                    _saveSelectedCommodity(c.name);
+                    _saveLastEnteredRate(c.rate);
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              CustomSearchField<Supplier>(
+                controller: _supplierController,
+                suggestions: suppliers,
+                hint: _selectedTransactionType == TransactionType.PURCHASE
+                    ? 'Select Supplier or type...'
+                    : 'Select Customer or type...',
+                displayText: (s) => s.name,
+                onSelected: (s) {
+                  setState(() {
+                    _selectedSupplier = s;
+                    _supplierController.text = s.name;
+                  });
+                },
+              ),
+              const SizedBox(height: 16),
+
+              CustomDropdownField<String>(
+                label: 'Commodity Condition',
+                items: _conditions,
+                value: _selectedCondition,
+                displayText: (c) => c,
+                onChanged: (v) => setState(() => _selectedCondition = v),
+              ),
+              const SizedBox(height: 16),
+
+              Text('Amount: ${_totalPrice.toFormatted()}',
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              Text('In Words: $_priceInWords',
+                  style: TextStyle(color: Colors.grey[600])),
+              const SizedBox(height: 24),
+
+              CustomButton(
+                text: 'Save ${_selectedTransactionType == TransactionType.PURCHASE ? "Purchase" : "Sale"}',
+                onPressed: _showSaveTransactionDialog,
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                color: AppColors.primary,
+                borderRadius: BorderRadius.circular(12),
+                elevation: 2,
+              ),
+            ],
           ),
         ),
       ),

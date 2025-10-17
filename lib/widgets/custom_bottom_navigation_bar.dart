@@ -16,21 +16,26 @@ class CustomBottomNavigationBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BottomNavigationBar(
-      items: [
+      type: BottomNavigationBarType.fixed,
+      items: const [
         BottomNavigationBarItem(
-          icon: FaIcon(FontAwesomeIcons.house, size: 24),
+          icon: FaIcon(FontAwesomeIcons.house, size: 22),
           label: 'Home',
         ),
         BottomNavigationBarItem(
-          icon: FaIcon(FontAwesomeIcons.calculator, size: 24),
+          icon: FaIcon(FontAwesomeIcons.calculator, size: 22),
           label: 'Calculator',
         ),
         BottomNavigationBarItem(
-          icon: FaIcon(FontAwesomeIcons.cartShopping, size: 24),
+          icon: FaIcon(FontAwesomeIcons.cartShopping, size: 22),
           label: 'Purchases',
         ),
         BottomNavigationBarItem(
-          icon: FaIcon(FontAwesomeIcons.user, size: 24),
+          icon: FaIcon(FontAwesomeIcons.store, size: 22),
+          label: 'Marketplace',
+        ),
+        BottomNavigationBarItem(
+          icon: FaIcon(FontAwesomeIcons.user, size: 22),
           label: 'Profile',
         ),
       ],
@@ -39,7 +44,7 @@ class CustomBottomNavigationBar extends StatelessWidget {
       selectedItemColor: AppColors.primary,
       unselectedItemColor: Colors.black54,
       selectedLabelStyle: GoogleFonts.poppins(
-        fontSize: 14.0,
+        fontSize: 13.0,
         fontWeight: FontWeight.w500,
       ),
       unselectedLabelStyle: GoogleFonts.poppins(

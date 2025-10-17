@@ -2,6 +2,7 @@ class User {
   final int id;
   final String name;
   final String email;
+  final String phone;
   final String role;
   final bool isFirstLogin;
 
@@ -9,6 +10,7 @@ class User {
     required this.id,
     required this.name,
     required this.email,
+    required this.phone,
     required this.role,
     required this.isFirstLogin,
   });
@@ -19,6 +21,7 @@ class User {
       id: json['id'] ?? 0,
       name: json['name'] ?? 'Unknown',
       email: json['email'] ?? 'Unknown',
+      phone: json['phone'] ?? 'Unknown',
       role: json['role'] ?? 'Unknown',
       isFirstLogin: json['isFirstLogin'] ?? false,
     );
@@ -30,6 +33,7 @@ class User {
       'id': id,
       'name': name,
       'email': email,
+      'phone': phone,
       'role': role,
       'isFirstLogin': isFirstLogin,
     };

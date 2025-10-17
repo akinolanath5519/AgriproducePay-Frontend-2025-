@@ -1,54 +1,69 @@
-import 'package:agriproduce/widgets/custom_text_field.dart';
 import 'package:flutter/material.dart';
+import 'custom_button.dart';
 
+/// A reusable, flexible dialog widget for confirmation, info, or form actions.
+/// Works for Delete, Edit, Save, Confirm, etc.
 class CustomDialog extends StatelessWidget {
   final String title;
-  final TextEditingController nameController;
-  final TextEditingController rateController;
-  final VoidCallback onSave;
+  final Widget? content;
+  final String confirmText;
+  final String cancelText;
+  final VoidCallback? onConfirm;
+  final VoidCallback? onCancel;
+  final Color? confirmColor;
+  final bool showCancelButton;
+  final bool isLoading;
+  final double radius;
 
   const CustomDialog({
     super.key,
     required this.title,
-    required this.nameController,
-    required this.rateController,
-    required this.onSave,
+    this.content,
+    this.confirmText = "OK",
+    this.cancelText = "Cancel",
+    this.onConfirm,
+    this.onCancel,
+    this.confirmColor,
+    this.showCancelButton = true,
+    this.isLoading = false,
+    this.radius = 12,
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return AlertDialog(
-      title: Text(title),
-      content: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 3.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            CustomTextField(
-              controller: nameController,
-              label: 'Name',
-            ),
-            SizedBox(height: 16.0),
-            CustomTextField(
-              controller: rateController,
-              label: 'Rate',
-              hintText: 'Enter rate',
-              keyboardType: TextInputType.number,
-            ),
-          ],
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(radius),
+      ),
+      title: Text(
+        title,
+        style: theme.textTheme.titleLarge?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: theme.colorScheme.primary,
         ),
       ),
+      content: content,
+      actionsPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
       actions: [
-        TextButton(
-          onPressed: () => Navigator.of(context).pop(),
-          child: Text('Cancel'),
-        ),
-        ElevatedButton(
-          onPressed: () {
-            onSave();
-            Navigator.of(context).pop();
-          },
-          child: Text('Save'),
+        if (showCancelButton)
+          TextButton(
+            onPressed: isLoading ? null : (onCancel ?? () => Navigator.pop(context)),
+            child: Text(
+              cancelText,
+              style: theme.textTheme.bodyLarge?.copyWith(
+                color: theme.colorScheme.primary,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
+          ),
+        CustomButton(
+          text: confirmText,
+          onPressed: isLoading ? null : (onConfirm ?? () => Navigator.pop(context)),
+          color: confirmColor ?? theme.colorScheme.primary,
+          width: 100,
+          padding: const EdgeInsets.symmetric(vertical: 10),
         ),
       ],
     );

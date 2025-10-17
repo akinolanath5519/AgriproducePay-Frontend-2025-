@@ -90,9 +90,7 @@ class AnalyticsCard extends StatelessWidget {
 }
 
 class HomeScreen extends ConsumerStatefulWidget {
-  final bool isAdmin;
-
-  const HomeScreen({Key? key, required this.isAdmin}) : super(key: key);
+  const HomeScreen({Key? key}) : super(key: key);
 
   @override
   _HomeScreenState createState() => _HomeScreenState();
@@ -134,6 +132,8 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
     final transactions = ref.watch(transactionProvider);
     final user = ref.watch(userProvider);
 
+    final bool isAdmin = user?.role == 'admin'; 
+
     final double totalPurchases =
         transactions.fold<double>(0, (sum, txn) => sum + txn.price);
     final int activeSuppliers = suppliers.length;
@@ -149,7 +149,7 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
           );
         },
       },
-      if (widget.isAdmin)
+      if (isAdmin)
         {
           'title': 'Add Commodity\'s Rate',
           'icon': Icons.inventory,

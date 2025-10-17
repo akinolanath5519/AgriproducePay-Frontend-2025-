@@ -1,142 +1,110 @@
 import 'dart:convert';
 import 'package:agriproduce/constant/appLogger.dart';
+import 'package:agriproduce/constant/httpError.dart';
 import 'package:agriproduce/data_models/commodity_model.dart';
-import 'package:agriproduce/local%20service/local_commodity_service.dart';
+import 'package:agriproduce/services/subscription_plan_service.dart';
 import 'package:agriproduce/utilis/api_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+/// ---------------- LOCAL COMMODITY CACHE ----------------
+class LocalCommodityService {
+  final Map<String, Commodity> _cache = {};
+
+  void saveCommodity(Commodity commodity) {
+    _cache[commodity.id] = commodity;
+    AppLogger.logInfo('💾 Saved locally: ${commodity.toJson()}');
+  }
+
+  List<Commodity> getAllCommodities() {
+    AppLogger.logInfo('📦 Returning cached commodities');
+    return _cache.values.toList();
+  }
+
+  bool isDataCached() => _cache.isNotEmpty;
+
+  void deleteCommodity(String id) {
+    _cache.remove(id);
+    AppLogger.logInfo('🗑 Deleted locally: $id');
+  }
+}
+
+/// ---------------- COMMODITY SERVICE WITH SUBSCRIPTION CHECK ----------------
 class CommodityService {
   final LocalCommodityService localService = LocalCommodityService();
+  final SubscriptionPlanService subscriptionService = SubscriptionPlanService();
 
-  /// Create commodity (offline first)
+  /// Check if user has active subscription
+  Future<bool> _hasActiveSubscription(WidgetRef ref) async {
+    final data = await subscriptionService.checkActiveSubscription(ref);
+    return data['hasActive'] == true;
+  }
+
+  /// Create commodity
   Future<void> createCommodity(WidgetRef ref, Commodity commodity) async {
-    // 1️⃣ Insert locally with temp ID
-    await localService.insertCommodity(commodity, synced: false);
+    localService.saveCommodity(commodity); // Always save locally
 
-    try {
-      // 2️⃣ Sync to server
-      final response =
-          await apiPost(ref, '/commodities/commodity', commodity.toJson());
-      final serverData = jsonDecode(response.body);
-      final serverCommodity = Commodity.fromJson(serverData);
-
-      // 3️⃣ Update local DB with server ID and mark as synced
-      await localService.deleteCommodity(commodity.id); // remove temp
-      await localService.insertCommodity(serverCommodity, synced: true);
-
-      AppLogger.logInfo('✅ Synced commodity to server: ${serverCommodity.id}');
-    } catch (e, stackTrace) {
-      AppLogger.logError(
-          '❌ Failed to sync commodity → will retry later', e, stackTrace);
+    if (await _hasActiveSubscription(ref)) {
+      try {
+        await apiPost(ref, '/commodities/commodity', commodity.toJson());
+      } catch (e, stackTrace) {
+        AppLogger.logError('❌ Failed to create commodity remotely: $e', e, stackTrace);
+      }
+    } else {
+      AppLogger.logInfo('⚠️ User has no active subscription. Commodity saved locally only.');
     }
   }
 
-  /// Get all commodities (offline-first, merged with server)
+  /// Get all commodities
   Future<List<Commodity>> getCommodities(WidgetRef ref) async {
-    // 1. Load local first
-    final localCommodities = await localService.getAllCommodities();
-    AppLogger.logInfo(
-        "📥 Loaded ${localCommodities.length} commodities from local DB");
-
-    // Log each local commodity
-    for (final c in localCommodities) {
-      AppLogger.logInfo(
-          "   LOCAL → id=${c.id}, name=${c.name}, synced=${c.isSynced}");
+    if (!await _hasActiveSubscription(ref)) {
+      AppLogger.logInfo('⚠️ No active subscription. Returning local commodities only.');
+      return localService.getAllCommodities();
     }
 
     try {
-      // 2. Try fetching from API
       final response = await apiGet(ref, '/commodities/commodity', json: false);
-      if (response.body.isNotEmpty) {
-        final List<dynamic> commodityList = jsonDecode(response.body);
-        final serverCommodities =
-            commodityList.map((json) => Commodity.fromJson(json)).toList();
+      if (response.body.isEmpty) return localService.getAllCommodities();
 
-        AppLogger.logInfo(
-            "🌍 Refreshed ${serverCommodities.length} commodities from server");
+      final List<dynamic> commodityList = jsonDecode(response.body);
+      final commodities = commodityList.map((json) => Commodity.fromJson(json)).toList();
 
-        // Log each server commodity
-        for (final c in serverCommodities) {
-          AppLogger.logInfo("   SERVER → id=${c.id}, name=${c.name}");
-        }
-
-        // Save/overwrite server commodities in local DB as synced
-        for (final c in serverCommodities) {
-          AppLogger.logInfo(
-              "💾 Inserting/Updating server commodity in local DB → id=${c.id}, name=${c.name}");
-          await localService.insertCommodity(c, synced: true);
-        }
-
-        // 3. Merge server + local
-        final Map<String, Commodity> merged = {
-          for (final c in localCommodities) c.id: c,
-          for (final c in serverCommodities) c.id: c, // overwrites if same id
-        };
-
-        AppLogger.logInfo(
-            "🧩 After merge → ${merged.length} unique commodities");
-
-        // Log merged commodities
-        for (final c in merged.values) {
-          AppLogger.logInfo("   MERGED → id=${c.id}, name=${c.name}");
-        }
-
-        return merged.values.toList();
-      }
+      commodities.forEach(localService.saveCommodity); // Cache locally too
+      return commodities;
     } catch (e, stackTrace) {
+      HttpErrorHandler.handleJsonDecodingError('decode commodities', e);
       AppLogger.logError('❌ Error fetching commodities: $e', e, stackTrace);
     }
 
-    // 4. If API fails, fallback to local only
-    return localCommodities;
+    return localService.getAllCommodities();
   }
 
-  /// Update commodity (offline first)
-  Future<void> updateCommodity(
-      WidgetRef ref, String id, Commodity commodity) async {
-    await localService.insertCommodity(commodity, synced: false);
-    try {
-      await apiPut(ref, '/commodities/commodity/$id', commodity.toJson());
-      await localService.updateSyncStatus(id, true);
-      AppLogger.logInfo('🚀 Synced commodity update to server: $id');
-    } catch (e, stackTrace) {
-      AppLogger.logError(
-          '❌ Failed to sync commodity update: $e', e, stackTrace);
-    }
-  }
+  /// Update commodity
+  Future<void> updateCommodity(WidgetRef ref, String id, Commodity commodity) async {
+    localService.saveCommodity(commodity); // Always save locally
 
-  /// Delete commodity (offline first)
-  Future<void> deleteCommodity(WidgetRef ref, String id) async {
-    await localService.deleteCommodity(id);
-    try {
-      await apiDelete(ref, '/commodities/commodity/$id');
-      AppLogger.logInfo('🚀 Deleted commodity remotely: $id');
-    } catch (e, stackTrace) {
-      AppLogger.logError(
-          '❌ Failed to delete commodity remotely: $e', e, stackTrace);
-    }
-  }
-
-  /// Sync all unsynced local commodities to server
-  Future<void> syncLocalToServer(WidgetRef ref) async {
-    final unsynced = await localService.getUnsyncedCommodities();
-
-    for (final commodity in unsynced) {
+    if (await _hasActiveSubscription(ref)) {
       try {
-        final response =
-            await apiPost(ref, '/commodities/commodity', commodity.toJson());
-        final serverData = jsonDecode(response.body);
-        final serverCommodity = Commodity.fromJson(serverData);
-
-        // Replace temp ID with server ID
-        await localService.deleteCommodity(commodity.id);
-        await localService.insertCommodity(serverCommodity, synced: true);
-
-        AppLogger.logInfo('🚀 Synced local commodity: ${serverCommodity.id}');
+        await apiPut(ref, '/commodities/commodity/$id', commodity.toJson());
       } catch (e, stackTrace) {
-        AppLogger.logError(
-            '❌ Failed to sync local commodity: $e', e, stackTrace);
+        AppLogger.logError('❌ Failed to update commodity remotely: $e', e, stackTrace);
       }
+    } else {
+      AppLogger.logInfo('⚠️ No active subscription. Update saved locally only.');
+    }
+  }
+
+  /// Delete commodity
+  Future<void> deleteCommodity(WidgetRef ref, String id) async {
+    localService.deleteCommodity(id); // Always delete locally
+
+    if (await _hasActiveSubscription(ref)) {
+      try {
+        await apiDelete(ref, '/commodities/commodity/$id');
+      } catch (e, stackTrace) {
+        AppLogger.logError('❌ Failed to delete commodity remotely: $e', e, stackTrace);
+      }
+    } else {
+      AppLogger.logInfo('⚠️ No active subscription. Delete performed locally only.');
     }
   }
 }

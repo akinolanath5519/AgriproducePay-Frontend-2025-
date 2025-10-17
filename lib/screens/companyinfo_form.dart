@@ -61,7 +61,7 @@ class _CompanyInfoFormState extends ConsumerState<CompanyInfoForm> {
       // Redirect to Admin Dashboard
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const Dashboard(isAdmin: true)),
+        MaterialPageRoute(builder: (context) => const Dashboard()),
       );
     } catch (e) {
       // Show error snackbar
@@ -163,7 +163,7 @@ class _CompanyInfoFormState extends ConsumerState<CompanyInfoForm> {
                       color: Colors.deepPurple,
                       borderRadius: BorderRadius.circular(30),
                       elevation: 15,
-                      shadowColor: Colors.black.withOpacity(0.5),
+                     
                     ),
             ],
           ),

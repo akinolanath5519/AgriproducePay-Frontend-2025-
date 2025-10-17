@@ -9,8 +9,135 @@ import 'package:agriproduce/constant/appLogger.dart';
 import 'package:agriproduce/constant/httpError.dart';
 
 class AuthService {
-  // Login Method
+// Add this inside your AuthService class
+  Future<User?> assignRole(
+  int userId,
+  List<String> roles,
+  WidgetRef ref,
+) async {
+  try {
+    final response = await http.post(
+      Uri.parse('${Config.baseUrl}/auth/assign-role'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({
+        'userId': userId,
+        'roles': roles,
+      }),
+    );
 
+    if (response.statusCode == 201) {
+      final responseData = jsonDecode(response.body);
+
+      // ✅ Extract the token sent by backend
+      final token = responseData['token'];
+      if (token == null || token.isEmpty) {
+        throw Exception("No token received after assigning roles");
+      }
+
+      // ✅ Parse user object (with roles)
+      final assignedUser = User.fromJson(responseData['user']);
+
+      // ✅ Save token in provider or secure storage
+      await saveToken(token, ref);
+
+      // ✅ Update user in provider
+      ref.read(userProvider.notifier).setUser(assignedUser);
+
+      AppLogger.logInfo(
+          'Roles assigned successfully and user logged in: ${assignedUser.email}');
+
+      return assignedUser;
+    } else {
+      HttpErrorHandler.handleResponse(response, 'Failed to assign roles');
+      return null;
+    }
+  } catch (e) {
+    AppLogger.logError('Error assigning roles to userId $userId: $e');
+    rethrow;
+  }
+}
+
+  Future<bool> toggleRole(
+    int userId,
+    String role,
+    bool enabled,
+    WidgetRef ref,
+  ) async {
+    final token = ref.read(tokenProvider);
+    if (token == null) {
+      AppLogger.logError('Token is null, cannot toggle roles');
+      throw Exception('User not authenticated');
+    }
+
+    try {
+      final response = await http.post(
+        Uri.parse('${Config.baseUrl}/auth/toggle-role'),
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          'userId': userId,
+          'role': role,
+          'enabled': enabled,
+        }),
+      );
+
+      if (response.statusCode == 200) {
+        final responseData = jsonDecode(response.body);
+        AppLogger.logInfo(responseData['message']);
+        return true;
+      } else {
+        HttpErrorHandler.handleResponse(response, 'Failed to toggle role');
+        return false;
+      }
+    } catch (e) {
+      AppLogger.logError('Error toggling role for userId $userId: $e');
+      rethrow;
+    }
+  }
+
+
+// Add this inside your AuthService class
+  Future<Map<String, dynamic>?> signup({
+    required String name,
+    required String email,
+    required String phone,
+    required String password,
+  }) async {
+    try {
+      final response = await http.post(
+        Uri.parse('${Config.baseUrl}/auth/sign-up'),
+        headers: {'Content-Type': 'application/json'},
+        body: jsonEncode({
+          'name': name,
+          'email': email,
+          'phone': phone,
+          'password': password,
+        }),
+      );
+
+      if (response.statusCode == 201) {
+        final responseData = jsonDecode(response.body);
+        AppLogger.logInfo('Signup successful for $email');
+
+        return {
+          'userId': responseData['userId'],
+          'message': responseData['message'],
+        };
+      } else {
+        HttpErrorHandler.handleResponse(response, 'Failed to sign up');
+        return null;
+      }
+    } catch (e) {
+      AppLogger.logError('Signup error for $email: $e');
+      rethrow;
+    }
+  }
+
+
+
+  // Login Method
   Future<User?> login(String email, String password, WidgetRef ref) async {
     try {
       final response = await http.post(

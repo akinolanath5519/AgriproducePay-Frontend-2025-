@@ -3,6 +3,7 @@ import 'package:agriproduce/data_models/supplier_model.dart';
 import 'package:agriproduce/state_management/sack_provider.dart';
 import 'package:agriproduce/state_management/supplier_provider.dart';
 import 'package:agriproduce/theme/app_theme.dart';
+import 'package:agriproduce/widgets/custom_search_field.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -17,41 +18,44 @@ class SackManagementScreen extends ConsumerStatefulWidget {
 class _SackManagementScreenState extends ConsumerState<SackManagementScreen> {
   bool _loading = true;
   String _selectedTypeFilter = 'All';
-  String? _selectedSupplierFilterId;
-  String? _selectedSupplierId; // for table view
+  Supplier? _selectedSupplierFilter;
+  String? _selectedSupplierId;
 
- @override
-void initState() {
-  super.initState();
-  _checkAndFetchData();
-}
+  @override
+  void initState() {
+    super.initState();
+    _checkAndFetchData();
+  }
 
-Future<void> _checkAndFetchData() async {
-  final collections = ref.read(sackCollectionNotifierProvider);
-  final returns = ref.read(sackReturnNotifierProvider);
-  final suppliers = ref.read(supplierNotifierProvider);
+  Future<void> _checkAndFetchData() async {
+    final collections = ref.read(sackCollectionNotifierProvider);
+    final returns = ref.read(sackReturnNotifierProvider);
+    final suppliers = ref.read(supplierNotifierProvider);
 
-  // ✅ Only fetch if data is empty
-  if (collections.isEmpty || returns.isEmpty || suppliers.isEmpty) {
-    setState(() => _loading = true);
-    await _fetchData();
-  } else {
+    if (collections.isEmpty || returns.isEmpty || suppliers.isEmpty) {
+      setState(() => _loading = true);
+      await _fetchData();
+    } else {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _fetchData() async {
+    try {
+      await ref
+          .read(sackCollectionNotifierProvider.notifier)
+          .fetchSackCollections(ref);
+      await ref
+          .read(sackReturnNotifierProvider.notifier)
+          .fetchSackReturns(ref);
+      await ref.read(supplierNotifierProvider.notifier).fetchSuppliers(ref);
+    } catch (_) {}
     setState(() => _loading = false);
   }
-}
-
-Future<void> _fetchData() async {
-  try {
-    await ref.read(sackCollectionNotifierProvider.notifier).fetchSackCollections(ref);
-    await ref.read(sackReturnNotifierProvider.notifier).fetchSackReturns(ref);
-    await ref.read(supplierNotifierProvider.notifier).fetchSuppliers(ref);
-  } catch (_) {}
-  setState(() => _loading = false);
-}
-
 
   Future<void> _showSackModal() async {
     final _formKey = GlobalKey<FormState>();
+    final supplierController = TextEditingController();
     Supplier? selectedSupplier;
     String type = 'Collected';
     int quantity = 0;
@@ -65,53 +69,57 @@ Future<void> _fetchData() async {
         title: const Text('Add Sack Entry'),
         content: Form(
           key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              DropdownButtonFormField<Supplier>(
-                value: selectedSupplier,
-                decoration: const InputDecoration(labelText: 'Supplier'),
-                items: suppliers
-                    .map((s) =>
-                        DropdownMenuItem(value: s, child: Text(s.name)))
-                    .toList(),
-                onChanged: (s) => selectedSupplier = s,
-                validator: (v) =>
-                    v == null ? 'Please select a supplier' : null,
-              ),
-              const SizedBox(height: 8),
-              DropdownButtonFormField<String>(
-                value: type,
-                decoration: const InputDecoration(labelText: 'Type'),
-                items: const [
-                  DropdownMenuItem(
-                      value: 'Collected', child: Text('Collected')),
-                  DropdownMenuItem(
-                      value: 'Returned', child: Text('Returned')),
-                ],
-                onChanged: (v) => type = v!,
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                decoration:
-                    const InputDecoration(labelText: 'Bags Quantity'),
-                keyboardType: TextInputType.number,
-                validator: (v) {
-                  if (v == null || v.isEmpty) return 'Enter quantity';
-                  if (int.tryParse(v) == null) {
-                    return 'Enter a valid number';
-                  }
-                  return null;
-                },
-                onSaved: (v) => quantity = int.parse(v!),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                decoration:
-                    const InputDecoration(labelText: 'Collected By'),
-                onSaved: (v) => proxyName = v ?? '',
-              ),
-            ],
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                /// ✅ Supplier Search Field
+                CustomSearchField<Supplier>(
+                  controller: supplierController,
+                  suggestions: suppliers,
+                  hint: 'Select Supplier',
+                  displayText: (s) => s.name,
+                  onSelected: (s) {
+                    selectedSupplier = s;
+                    supplierController.text = s.name;
+                  },
+                  validator: (_) =>
+                      selectedSupplier == null ? 'Please select a supplier' : null,
+                ),
+                const SizedBox(height: 8),
+
+                /// ✅ Type Dropdown
+                DropdownButtonFormField<String>(
+                  value: type,
+                  decoration: const InputDecoration(labelText: 'Type'),
+                  items: const [
+                    DropdownMenuItem(value: 'Collected', child: Text('Collected')),
+                    DropdownMenuItem(value: 'Returned', child: Text('Returned')),
+                  ],
+                  onChanged: (v) => type = v!,
+                ),
+                const SizedBox(height: 8),
+
+                /// ✅ Quantity Input
+                TextFormField(
+                  decoration: const InputDecoration(labelText: 'Bags Quantity'),
+                  keyboardType: TextInputType.number,
+                  validator: (v) {
+                    if (v == null || v.isEmpty) return 'Enter quantity';
+                    if (int.tryParse(v) == null) return 'Enter a valid number';
+                    return null;
+                  },
+                  onSaved: (v) => quantity = int.parse(v!),
+                ),
+                const SizedBox(height: 8),
+
+                /// ✅ Proxy Name Input
+                TextFormField(
+                  decoration: const InputDecoration(labelText: 'Collected By'),
+                  onSaved: (v) => proxyName = v ?? '',
+                ),
+              ],
+            ),
           ),
         ),
         actions: [
@@ -160,22 +168,19 @@ Future<void> _fetchData() async {
 
   @override
   Widget build(BuildContext context) {
-    ref.listen<List<SackCollection>>(sackCollectionNotifierProvider,
-        (_, __) => setState(() {}));
-    ref.listen<List<SackReturn>>(sackReturnNotifierProvider,
-        (_, __) => setState(() {}));
+    ref.listen<List<SackCollection>>(sackCollectionNotifierProvider, (_, __) => setState(() {}));
+    ref.listen<List<SackReturn>>(sackReturnNotifierProvider, (_, __) => setState(() {}));
 
     final collections = ref.watch(sackCollectionNotifierProvider);
     final returns = ref.watch(sackReturnNotifierProvider);
     final suppliers = ref.watch(supplierNotifierProvider);
 
-    // Merge records
+    /// ✅ Merge data
     final mergedList = <Map<String, dynamic>>[];
     for (var c in collections) {
       final supplier = suppliers.firstWhere(
         (s) => s.id == c.supplierId.toString(),
-        orElse: () =>
-            Supplier(id: c.supplierId.toString(), name: 'Unknown'),
+        orElse: () => Supplier(id: c.supplierId.toString(), name: 'Unknown'),
       );
       mergedList.add({
         'dateTime': c.collectedAt,
@@ -186,11 +191,11 @@ Future<void> _fetchData() async {
         'proxy': c.proxyName ?? '-',
       });
     }
+
     for (var r in returns) {
       final supplier = suppliers.firstWhere(
         (s) => s.id == r.supplierId.toString(),
-        orElse: () =>
-            Supplier(id: r.supplierId.toString(), name: 'Unknown'),
+        orElse: () => Supplier(id: r.supplierId.toString(), name: 'Unknown'),
       );
       mergedList.add({
         'dateTime': r.returnedAt,
@@ -202,25 +207,22 @@ Future<void> _fetchData() async {
       });
     }
 
-    // Apply filters
+    /// ✅ Apply filters
     final filteredList = mergedList.where((item) {
-      final typeMatch = _selectedTypeFilter == 'All' ||
-          item['type'] == _selectedTypeFilter;
-      final supplierMatch = _selectedSupplierFilterId == null ||
-          item['supplierId'] == _selectedSupplierFilterId;
+      final typeMatch = _selectedTypeFilter == 'All' || item['type'] == _selectedTypeFilter;
+      final supplierMatch = _selectedSupplierFilter == null ||
+          item['supplierId'] == _selectedSupplierFilter!.id;
       return typeMatch && supplierMatch;
     }).toList();
 
     filteredList.sort((a, b) => a['dateTime'].compareTo(b['dateTime']));
 
-    // If in supplier view, restrict to that supplier
+    /// ✅ If viewing one supplier
     final analyticsSource = _selectedSupplierId == null
         ? filteredList
-        : filteredList
-            .where((item) => item['supplierId'] == _selectedSupplierId)
-            .toList();
+        : filteredList.where((item) => item['supplierId'] == _selectedSupplierId).toList();
 
-    // Analytics
+    /// ✅ Compute analytics
     int balance = 0;
     int totalCollected = 0;
     int totalReturned = 0;
@@ -236,14 +238,11 @@ Future<void> _fetchData() async {
     }
 
     List<Map<String, dynamic>> supplierTable = [];
-    if (_selectedSupplierId != null) {
-      supplierTable = analyticsSource;
-    }
+    if (_selectedSupplierId != null) supplierTable = analyticsSource;
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Sack Management',
-            style: AppText.appTitle),
+        title: const Text('Sack Management', style: AppText.appTitle),
         centerTitle: true,
       ),
       floatingActionButton: FloatingActionButton(
@@ -255,7 +254,7 @@ Future<void> _fetchData() async {
             ? const Center(child: CircularProgressIndicator())
             : Column(
                 children: [
-                  // Filters
+                  /// ✅ Filters Row
                   Padding(
                     padding: const EdgeInsets.all(8.0),
                     child: Row(
@@ -263,61 +262,48 @@ Future<void> _fetchData() async {
                         DropdownButton<String>(
                           value: _selectedTypeFilter,
                           items: const [
-                            DropdownMenuItem(
-                                value: 'All', child: Text('All')),
-                            DropdownMenuItem(
-                                value: 'Collected',
-                                child: Text('Collected')),
-                            DropdownMenuItem(
-                                value: 'Returned',
-                                child: Text('Returned')),
+                            DropdownMenuItem(value: 'All', child: Text('All')),
+                            DropdownMenuItem(value: 'Collected', child: Text('Collected')),
+                            DropdownMenuItem(value: 'Returned', child: Text('Returned')),
                           ],
-                          onChanged: (v) =>
-                              setState(() => _selectedTypeFilter = v!),
+                          onChanged: (v) => setState(() => _selectedTypeFilter = v!),
                         ),
                         const SizedBox(width: 16),
-                        DropdownButton<String>(
-                          hint: const Text('Filter by Supplier'),
-                          value: _selectedSupplierFilterId,
-                          items: [
-                            const DropdownMenuItem(
-                                value: null, child: Text('All Suppliers')),
-                            ...suppliers.map((s) => DropdownMenuItem(
-                                value: s.id, child: Text(s.name))),
-                          ],
-                          onChanged: (v) =>
-                              setState(() => _selectedSupplierFilterId = v),
+
+                        /// ✅ Supplier Filter (Search Field)
+                        Expanded(
+                          child: CustomSearchField<Supplier>(
+                            controller: TextEditingController(
+                                text: _selectedSupplierFilter?.name ?? ''),
+                            suggestions: suppliers,
+                            hint: 'Filter by Supplier',
+                            displayText: (s) => s.name,
+                            onSelected: (s) =>
+                                setState(() => _selectedSupplierFilter = s),
+                          ),
                         ),
-                        const Spacer(),
                         IconButton(
-                            onPressed: _fetchData,
-                            icon: const Icon(Icons.refresh)),
+                          onPressed: _fetchData,
+                          icon: const Icon(Icons.refresh),
+                        ),
                       ],
                     ),
                   ),
-                  // Analytics
+
+                  /// ✅ Analytics
                   Padding(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 8.0, vertical: 4.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                     child: Row(
-                      mainAxisAlignment:
-                          MainAxisAlignment.spaceBetween,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        _buildAnalyticsCard(
-                            'Total Collected',
-                            totalCollected,
-                            AppColors.successGreen),
-                        _buildAnalyticsCard(
-                            'Total Returned',
-                            totalReturned,
-                            AppColors.orangeAccent),
-                        _buildAnalyticsCard(
-                            'Net Balance',
-                            balance,
-                            AppColors.primary),
+                        _buildAnalyticsCard('Total Collected', totalCollected, AppColors.successGreen),
+                        _buildAnalyticsCard('Total Returned', totalReturned, AppColors.orangeAccent),
+                        _buildAnalyticsCard('Net Balance', balance, AppColors.primary),
                       ],
                     ),
                   ),
+
+                  /// ✅ Table or Supplier List
                   Expanded(
                     child: _selectedSupplierId == null
                         ? ListView.builder(
@@ -326,15 +312,11 @@ Future<void> _fetchData() async {
                               final supplier = suppliers[index];
                               return Card(
                                 child: ListTile(
-                                  title: Text(supplier.name,
-                                      style: AppText.cardTitle),
+                                  title: Text(supplier.name, style: AppText.cardTitle),
                                   trailing: TextButton(
-                                    onPressed: () {
-                                      setState(() {
-                                        _selectedSupplierId =
-                                            supplier.id;
-                                      });
-                                    },
+                                    onPressed: () => setState(() {
+                                      _selectedSupplierId = supplier.id;
+                                    }),
                                     child: const Text('View Sacks'),
                                   ),
                                 ),
@@ -346,12 +328,9 @@ Future<void> _fetchData() async {
                               Align(
                                 alignment: Alignment.centerLeft,
                                 child: TextButton.icon(
-                                  onPressed: () => setState(
-                                      () =>
-                                          _selectedSupplierId = null),
+                                  onPressed: () => setState(() => _selectedSupplierId = null),
                                   icon: const Icon(Icons.arrow_back),
-                                  label: const Text(
-                                      'Back to Suppliers'),
+                                  label: const Text('Back to Suppliers'),
                                 ),
                               ),
                               Expanded(
@@ -359,34 +338,25 @@ Future<void> _fetchData() async {
                                   scrollDirection: Axis.horizontal,
                                   child: DataTable(
                                     columns: const [
-                                      DataColumn(label: Text('D')),
+                                      DataColumn(label: Text('No')),
                                       DataColumn(label: Text('Type')),
-                                      DataColumn(
-                                          label:
-                                              Text('Balance After')),
+                                      DataColumn(label: Text('Balance After')),
                                       DataColumn(label: Text('Qty')),
                                       DataColumn(label: Text('Proxy')),
-                                      DataColumn(
-                                          label: Text('DateTime')),
+                                      DataColumn(label: Text('DateTime')),
                                     ],
                                     rows: List.generate(
                                       supplierTable.length,
                                       (index) {
-                                        final item =
-                                            supplierTable[index];
+                                        final item = supplierTable[index];
                                         return DataRow(cells: [
-                                          DataCell(Text(
-                                              '${index + 1}')),
+                                          DataCell(Text('${index + 1}')),
                                           DataCell(Text(item['type'])),
-                                          DataCell(Text(
-                                              '${item['balanceAfter']}')),
-                                          DataCell(Text(
-                                              '${item['qty']}')),
+                                          DataCell(Text('${item['balanceAfter']}')),
+                                          DataCell(Text('${item['qty']}')),
                                           DataCell(Text(item['proxy'])),
-                                          DataCell(Text(item['dateTime']
-                                              .toString()
-                                              .split('.')
-                                              .first)),
+                                          DataCell(Text(
+                                              item['dateTime'].toString().split('.').first)),
                                         ]);
                                       },
                                     ),
@@ -403,18 +373,26 @@ Future<void> _fetchData() async {
   }
 
   Widget _buildAnalyticsCard(String title, int value, Color color) {
-    return Card(
+    return Expanded(
       child: Container(
-        padding: const EdgeInsets.all(16),
-        width: 110,
+        margin: const EdgeInsets.symmetric(horizontal: 4),
+        padding: const EdgeInsets.all(14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [
+            color.withOpacity(0.15),
+            color.withOpacity(0.05),
+          ]),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: color.withOpacity(0.3)),
+        ),
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text(title, style: AppText.cardTitle),
-            const SizedBox(height: 8),
+            Text(title,
+                style: TextStyle(fontWeight: FontWeight.w600, color: color, fontSize: 14)),
+            const SizedBox(height: 6),
             Text(
               '$value',
-              style: AppText.cardValue.copyWith(color: color),
+              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 18, color: color),
             ),
           ],
         ),

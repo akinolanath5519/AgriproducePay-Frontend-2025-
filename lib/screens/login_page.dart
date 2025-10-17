@@ -8,9 +8,8 @@ import 'package:agriproduce/widgets/custom_text_field.dart';
 import 'package:agriproduce/screens/dashboard.dart';
 import 'package:agriproduce/screens/register_page.dart';
 import 'package:agriproduce/screens/forget_password.dart';
-import 'package:agriproduce/widgets/companyinfo_form.dart';
+import 'package:agriproduce/screens/companyinfo_form.dart';
 import 'package:agriproduce/subscription/super_admin_renew_sub.dart';
-
 
 class LoginPage extends ConsumerStatefulWidget {
   const LoginPage({Key? key}) : super(key: key);
@@ -19,7 +18,8 @@ class LoginPage extends ConsumerStatefulWidget {
   ConsumerState<LoginPage> createState() => _LoginPageState();
 }
 
-class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProviderStateMixin {
+class _LoginPageState extends ConsumerState<LoginPage>
+    with SingleTickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final TextEditingController _emailController = TextEditingController();
   final TextEditingController _passwordController = TextEditingController();
@@ -37,16 +37,17 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
       vsync: this,
       duration: const Duration(milliseconds: 1000),
     );
-    
+
     _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
-    
+
     _slideAnimation = Tween<Offset>(
       begin: const Offset(0, 0.1),
       end: Offset.zero,
-    ).animate(CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
-    
+    ).animate(
+        CurvedAnimation(parent: _animationController, curve: Curves.easeOut));
+
     _animationController.forward();
   }
 
@@ -59,85 +60,75 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
   }
 
   Future<void> _login() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
-
-      try {
-        final user = await _authService.login(
-          _emailController.text,
-          _passwordController.text,
-          ref,
-        );
-
-        if (user != null) {
-          ref.read(userProvider.notifier).setUser(user);
-
-          final role = user.role.trim().toLowerCase();
-          final isFirstLogin = user.isFirstLogin;
-
-          if (role == 'admin') {
-            if (isFirstLogin) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const CompanyInfoForm(),
-                ),
-              );
-            } else {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => const Dashboard(isAdmin: true),
-                ),
-              );
-            }
-          } else if (role == 'superadmin') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const RenewSubscriptionScreen(),
-              ),
-            );
-          } else if (role == 'standard') {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const Dashboard(isAdmin: false),
-              ),
-            );
-          } else {
-            CustomSnackBar.show(
-              context,
-              'Oops, something went wrong with your user role. Please contact support.',
-              backgroundColor: AppColors.error,
-            );
-          }
-        } else {
-          CustomSnackBar.show(
-            context,
-            'Invalid email or password. Please check your credentials and try again.',
-            backgroundColor: AppColors.error,
-          );
-        }
-      } catch (e) {
-        CustomSnackBar.show(
-          context,
-          'An unexpected error occurred: $e. Please try again later.',
-          backgroundColor: AppColors.error,
-        );
-      } finally {
-        setState(() {
-          _isLoading = false;
-        });
-      }
-    } else {
+    if (!_formKey.currentState!.validate()) {
       CustomSnackBar.show(
         context,
         'Please fill in all fields correctly before submitting.',
         backgroundColor: AppColors.error,
       );
+      return;
+    }
+
+    setState(() => _isLoading = true);
+
+    try {
+      final user = await _authService.login(
+        _emailController.text,
+        _passwordController.text,
+        ref,
+      );
+
+      if (user != null) {
+        // Set user in provider
+        ref.read(userProvider.notifier).setUser(user);
+
+        final role = user.role.trim().toLowerCase();
+        final isFirstLogin = user.isFirstLogin;
+
+        if (role == 'admin') {
+          if (isFirstLogin) {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const CompanyInfoForm()),
+            );
+          } else {
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (_) => const Dashboard()),
+            );
+          }
+        } else if (role == 'superadmin') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const RenewSubscriptionScreen()),
+          );
+        } else if (role == 'standard') {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (_) => const Dashboard()),
+          );
+        } else {
+          CustomSnackBar.show(
+            context,
+            'Oops, something went wrong with your user role. Please contact support.',
+            backgroundColor: AppColors.error,
+          );
+        }
+      } else {
+        CustomSnackBar.show(
+          context,
+          'Invalid email or password. Please check your credentials and try again.',
+          backgroundColor: AppColors.error,
+        );
+      }
+    } catch (e) {
+      CustomSnackBar.show(
+        context,
+        'An unexpected error occurred: $e. Please try again later.',
+        backgroundColor: AppColors.error,
+      );
+    } finally {
+      setState(() => _isLoading = false);
     }
   }
 
@@ -175,7 +166,7 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                 ),
               ),
             ),
-            
+
             Center(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -208,17 +199,15 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                               const SizedBox(height: 16),
                               Text(
                                 'AgriProduce',
-                               
                               ),
                               const SizedBox(height: 8),
                               Text(
                                 'Cultivating Success Together',
-                                
                               ),
                             ],
                           ),
                         ),
-                        
+
                         // Login Card
                         Container(
                           decoration: BoxDecoration(
@@ -240,11 +229,11 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                   children: [
                                     // Header with decorative line
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Welcome Back',
-                                         
                                         ),
                                         const SizedBox(height: 8),
                                         Container(
@@ -252,17 +241,19 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                           height: 4,
                                           decoration: BoxDecoration(
                                             gradient: AppColors.primaryGradient,
-                                            borderRadius: BorderRadius.circular(2),
+                                            borderRadius:
+                                                BorderRadius.circular(2),
                                           ),
                                         ),
                                       ],
                                     ),
-                                    
+
                                     const SizedBox(height: 32),
-                                    
+
                                     // Email Field
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Email Address',
@@ -276,16 +267,18 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                           controller: _emailController,
                                           label: '',
                                           hintText: 'Enter your email',
-                                          keyboardType: TextInputType.emailAddress,
+                                          keyboardType:
+                                              TextInputType.emailAddress,
                                         ),
                                       ],
                                     ),
-                                    
+
                                     const SizedBox(height: 24),
-                                    
+
                                     // Password Field
                                     Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
                                       children: [
                                         Text(
                                           'Password',
@@ -300,7 +293,8 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                           obscureText: !_isPasswordVisible,
                                           decoration: InputDecoration(
                                             hintText: 'Enter your password',
-                                            prefixIcon: const Icon(Icons.lock_outline,
+                                            prefixIcon: const Icon(
+                                                Icons.lock_outline,
                                                 color: AppColors.accent),
                                             suffixIcon: IconButton(
                                               icon: Icon(
@@ -311,36 +305,43 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                               ),
                                               onPressed: () {
                                                 setState(() {
-                                                  _isPasswordVisible = !_isPasswordVisible;
+                                                  _isPasswordVisible =
+                                                      !_isPasswordVisible;
                                                 });
                                               },
                                             ),
                                             filled: true,
-                                            fillColor: AppColors.lightCream.withOpacity(0.5),
+                                            fillColor: AppColors.lightCream
+                                                .withOpacity(0.5),
                                             border: OutlineInputBorder(
-                                              borderRadius: AppBorderRadius.medium,
+                                              borderRadius:
+                                                  AppBorderRadius.medium,
                                               borderSide: BorderSide.none,
                                             ),
                                             enabledBorder: OutlineInputBorder(
-                                              borderRadius: AppBorderRadius.medium,
+                                              borderRadius:
+                                                  AppBorderRadius.medium,
                                               borderSide: BorderSide(
                                                 color: Colors.grey.shade300,
                                               ),
                                             ),
                                             focusedBorder: OutlineInputBorder(
-                                              borderRadius: AppBorderRadius.medium,
+                                              borderRadius:
+                                                  AppBorderRadius.medium,
                                               borderSide: const BorderSide(
                                                 color: AppColors.primary,
                                                 width: 2,
                                               ),
                                             ),
-                                            contentPadding: const EdgeInsets.symmetric(
+                                            contentPadding:
+                                                const EdgeInsets.symmetric(
                                               horizontal: 16,
                                               vertical: 16,
                                             ),
                                           ),
                                           validator: (value) {
-                                            if (value == null || value.isEmpty) {
+                                            if (value == null ||
+                                                value.isEmpty) {
                                               return 'Please enter your password';
                                             }
                                             return null;
@@ -348,12 +349,13 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                         ),
                                       ],
                                     ),
-                                    
+
                                     const SizedBox(height: 16),
-                                    
+
                                     // Remember me & Forgot password row
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
                                       children: [
                                         Row(
                                           children: [
@@ -362,10 +364,10 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                               onChanged: (value) {},
                                               activeColor: AppColors.primary,
                                               shape: RoundedRectangleBorder(
-                                                borderRadius: BorderRadius.circular(4),
+                                                borderRadius:
+                                                    BorderRadius.circular(4),
                                               ),
                                             ),
-                                            
                                           ],
                                         ),
                                         TextButton(
@@ -373,7 +375,8 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => const ForgetPasswordScreen(),
+                                                builder: (context) =>
+                                                    const ForgetPasswordScreen(),
                                               ),
                                             );
                                           },
@@ -382,70 +385,84 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                           ),
                                           child: Text(
                                             'Forgot Password?',
-                                            
                                           ),
                                         ),
                                       ],
                                     ),
-                                    
+
                                     const SizedBox(height: 32),
-                                    
+
                                     // Login Button
                                     _isLoading
                                         ? Container(
                                             width: double.infinity,
                                             height: 56,
                                             decoration: BoxDecoration(
-                                              gradient: AppColors.primaryGradient,
-                                              borderRadius: AppBorderRadius.medium,
+                                              gradient:
+                                                  AppColors.primaryGradient,
+                                              borderRadius:
+                                                  AppBorderRadius.medium,
                                               boxShadow: [AppShadows.subtle],
                                             ),
                                             child: const Center(
                                               child: SizedBox(
                                                 width: 24,
                                                 height: 24,
-                                                child: CircularProgressIndicator(
+                                                child:
+                                                    CircularProgressIndicator(
                                                   strokeWidth: 2,
-                                                  valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                                  valueColor:
+                                                      AlwaysStoppedAnimation<
+                                                          Color>(Colors.white),
                                                 ),
                                               ),
                                             ),
                                           )
                                         : Container(
                                             decoration: BoxDecoration(
-                                              gradient: AppColors.primaryGradient,
-                                              borderRadius: AppBorderRadius.medium,
+                                              gradient:
+                                                  AppColors.primaryGradient,
+                                              borderRadius:
+                                                  AppBorderRadius.medium,
                                               boxShadow: [AppShadows.subtle],
                                             ),
                                             child: ElevatedButton(
                                               style: ElevatedButton.styleFrom(
-                                                backgroundColor: Colors.transparent,
+                                                backgroundColor:
+                                                    Colors.transparent,
                                                 shadowColor: Colors.transparent,
-                                                minimumSize: const Size(double.infinity, 56),
+                                                minimumSize: const Size(
+                                                    double.infinity, 56),
                                                 shape: RoundedRectangleBorder(
-                                                  borderRadius: AppBorderRadius.medium,
+                                                  borderRadius:
+                                                      AppBorderRadius.medium,
                                                 ),
                                               ),
                                               onPressed: _login,
                                               child: Row(
-                                                mainAxisAlignment: MainAxisAlignment.center,
+                                                mainAxisAlignment:
+                                                    MainAxisAlignment.center,
                                                 children: [
                                                   Text(
                                                     'Log In',
-                                                    style: AppText.button.copyWith(
+                                                    style:
+                                                        AppText.button.copyWith(
                                                       fontSize: 16,
-                                                      fontWeight: FontWeight.w600,
+                                                      fontWeight:
+                                                          FontWeight.w600,
                                                     ),
                                                   ),
                                                   const SizedBox(width: 8),
-                                                  const Icon(Icons.arrow_forward, size: 20),
+                                                  const Icon(
+                                                      Icons.arrow_forward,
+                                                      size: 20),
                                                 ],
                                               ),
                                             ),
                                           ),
-                                    
+
                                     const SizedBox(height: 24),
-                                    
+
                                     // Divider with text
                                     Row(
                                       children: [
@@ -456,8 +473,8 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                           ),
                                         ),
                                         Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                                         
+                                          padding: const EdgeInsets.symmetric(
+                                              horizontal: 16),
                                         ),
                                         Expanded(
                                           child: Divider(
@@ -467,20 +484,21 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                                         ),
                                       ],
                                     ),
-                                    
+
                                     const SizedBox(height: 24),
-                                    
+
                                     // Register Section
                                     Row(
-                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.center,
                                       children: [
-                                        
                                         TextButton(
                                           onPressed: () {
                                             Navigator.push(
                                               context,
                                               MaterialPageRoute(
-                                                builder: (context) => const RegisterPage(),
+                                                builder: (context) =>
+                                                    const RegisterPage(),
                                               ),
                                             );
                                           },
@@ -502,13 +520,13 @@ class _LoginPageState extends ConsumerState<LoginPage> with SingleTickerProvider
                               ),
                             ),
                           ),
-                        ),                        
-                        const SizedBox(height: 40),                    // Footer with additional info
+                        ),
+                        const SizedBox(
+                            height: 40), // Footer with additional info
                         Text(
                           'Secure agricultural management platform',
-                          
                         ),
-                        
+
                         const SizedBox(height: 20),
                       ],
                     ),
